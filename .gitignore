@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+
+# Data files (包含敏感信息)
+data/config.json
+data/vector_db/
+data/projects/
+data/scripts/
+data/_temp_import.zip
+data/knowledge_base_export/
+
+# 保留 data 目录结构
+!data/.gitkeep
+!data/test_*/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# OS
+.DS_Store
+Thumbs.db
