@@ -394,6 +394,16 @@ def render_api_settings():
                 embedding_base_url = provider_info["base_url"]
                 
                 st.caption(f"📍 API 地址: {embedding_base_url}")
+                
+                # Embedding API Key（如果与 LLM 提供商不同，需要单独填写）
+                embedding_api_key = st.text_input(
+                    "Embedding API Key",
+                    value=edit_config.embedding_api_key if edit_config else "",
+                    type="password",
+                    help="如果 Embedding 提供商与 LLM 不同，请填写对应的 API Key。留空则使用上方的 API Key"
+                )
+            else:
+                embedding_api_key = ""
             
             col1, col2 = st.columns(2)
             with col1:
@@ -419,7 +429,8 @@ def render_api_settings():
                         model_id=model_id.strip(),
                         name=config_name.strip(),
                         embedding_model=embedding_model,
-                        embedding_base_url=embedding_base_url
+                        embedding_base_url=embedding_base_url,
+                        embedding_api_key=embedding_api_key.strip() if embedding_api_key else ""
                     )
                     success, msg = api_manager.save_config(config)
                     if success:

@@ -225,9 +225,12 @@ class RAGSystem:
             # 豆包 embedding API 端点
             url = config.embedding_base_url or "https://ark.cn-beijing.volces.com/api/v3/embeddings/multimodal"
             
+            # 使用 embedding 专用的 API Key
+            api_key = config.get_embedding_api_key()
+            
             headers = {
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {config.api_key}"
+                "Authorization": f"Bearer {api_key}"
             }
             
             payload = {
@@ -273,8 +276,11 @@ class RAGSystem:
         try:
             url = config.embedding_base_url or "https://api.siliconflow.cn/v1/embeddings"
             
+            # 使用 embedding 专用的 API Key
+            api_key = config.get_embedding_api_key()
+            
             headers = {
-                "Authorization": f"Bearer {config.api_key}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json"
             }
             
@@ -314,8 +320,11 @@ class RAGSystem:
             
             base_url = config.embedding_base_url or config.base_url
             
+            # 使用 embedding 专用的 API Key
+            api_key = config.get_embedding_api_key()
+            
             client = OpenAI(
-                api_key=config.api_key,
+                api_key=api_key,
                 base_url=base_url
             )
             

@@ -21,7 +21,8 @@ class APIConfig:
     model_id: str
     name: str = "default"
     embedding_model: str = ""  # embedding 模型 ID
-    embedding_base_url: str = ""  # embedding API 地址（可选，默认使用 base_url）
+    embedding_base_url: str = ""  # embedding API 地址
+    embedding_api_key: str = ""  # embedding 独立的 API Key（不同提供商时需要）
     
     def is_valid(self) -> tuple[bool, str]:
         """验证配置是否有效"""
@@ -38,6 +39,12 @@ class APIConfig:
     def has_embedding_config(self) -> bool:
         """检查是否配置了 embedding 模型"""
         return bool(self.embedding_model and self.embedding_model.strip())
+    
+    def get_embedding_api_key(self) -> str:
+        """获取 embedding 使用的 API Key（优先使用独立配置，否则使用主 API Key）"""
+        if self.embedding_api_key and self.embedding_api_key.strip():
+            return self.embedding_api_key.strip()
+        return self.api_key
 
 
 # 预定义的 Embedding 模型列表
@@ -145,7 +152,8 @@ class APIManager:
                     model_id=config_dict.get('model_id', ''),
                     name=config_dict.get('name', 'default'),
                     embedding_model=config_dict.get('embedding_model', ''),
-                    embedding_base_url=config_dict.get('embedding_base_url', '')
+                    embedding_base_url=config_dict.get('embedding_base_url', ''),
+                    embedding_api_key=config_dict.get('embedding_api_key', '')
                 )
                 self._client = None  # 重置客户端，下次使用时重新创建
                 break
@@ -207,7 +215,8 @@ class APIManager:
                 model_id=config_dict.get('model_id', ''),
                 name=config_dict.get('name', 'default'),
                 embedding_model=config_dict.get('embedding_model', ''),
-                embedding_base_url=config_dict.get('embedding_base_url', '')
+                embedding_base_url=config_dict.get('embedding_base_url', ''),
+                embedding_api_key=config_dict.get('embedding_api_key', '')
             ))
         return configs
     
@@ -231,7 +240,8 @@ class APIManager:
                     model_id=config_dict.get('model_id', ''),
                     name=config_dict.get('name', 'default'),
                     embedding_model=config_dict.get('embedding_model', ''),
-                    embedding_base_url=config_dict.get('embedding_base_url', '')
+                    embedding_base_url=config_dict.get('embedding_base_url', ''),
+                    embedding_api_key=config_dict.get('embedding_api_key', '')
                 )
                 found = True
                 break
