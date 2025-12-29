@@ -143,7 +143,9 @@ def init_session_state():
     
     if "rag_system" not in st.session_state:
         try:
-            st.session_state.rag_system = RAGSystem()
+            # 传递 API 管理器给 RAG 系统，以便调用 embedding 模型
+            api_manager = st.session_state.get("api_manager")
+            st.session_state.rag_system = RAGSystem(api_manager=api_manager)
         except Exception as e:
             st.session_state.rag_system = None
             st.session_state.init_error_rag = str(e)
@@ -221,40 +223,177 @@ def render_api_settings():
             return
         
         try:
+            all_configs = api_manager.get_all_configs()
             current_config = api_manager.load_config()
+            active_config_name = api_manager.get_active_config_name()
         except Exception as e:
             display_error("加载 API 配置失败", str(e))
+            all_configs = []
             current_config = None
+            active_config_name = "default"
         
-        # 显示当前配置状态
-        if current_config:
-            st.success(f"当前配置: {current_config.name}")
+        # 配置选择区域
+        if all_configs:
+            st.markdown("#### 选择配置")
+            config_names = [config.name for config in all_configs]
+            
+            # 确保当前活动配置在列表中
+            if active_config_name not in config_names and config_names:
+                active_config_name = config_names[0]
+            
+            selected_config_name = st.selectbox(
+                "当前使用的配置",
+                config_names,
+                index=config_names.index(active_config_name) if active_config_name in config_names else 0,
+                help="选择要使用的 API 配置"
+            )
+            
+            # 切换配置
+            if selected_config_name != active_config_name:
+                try:
+                    success, msg = api_manager.switch_config(selected_config_name)
+                    if success:
+                        # 更新 RAG 系统的 API 管理器
+                        if st.session_state.rag_system:
+                            st.session_state.rag_system.update_api_manager(api_manager)
+                        display_success(f"已切换到配置: {selected_config_name}")
+                        st.rerun()
+                    else:
+                        display_error(f"切换失败: {msg}")
+                except Exception as e:
+                    display_error("切换配置时发生错误", str(e))
+            
+            # 显示当前配置信息
+            if current_config:
+                config_info = f"✅ 当前配置: {current_config.name} ({current_config.model_id})"
+                if current_config.has_embedding_config():
+                    config_info += f"\n📊 Embedding: {current_config.embedding_model}"
+                st.info(config_info)
+            
+            # 删除配置按钮
+            if len(all_configs) > 1:  # 至少保留一个配置
+                col1, col2 = st.columns([3, 1])
+                with col2:
+                    if st.button("🗑️ 删除", key="delete_config"):
+                        try:
+                            success, msg = api_manager.delete_config(selected_config_name)
+                            if success:
+                                display_success("配置已删除")
+                                st.rerun()
+                            else:
+                                display_error(f"删除失败: {msg}")
+                        except Exception as e:
+                            display_error("删除配置时发生错误", str(e))
         else:
-            display_warning("未配置 API，请填写以下信息")
+            display_warning("未配置 API，请添加配置")
+        
+        st.markdown("---")
+        st.markdown("#### 添加/编辑配置")
         
         # 配置表单
         with st.form("api_config_form"):
+            # 如果选择了现有配置，预填充表单
+            edit_config = None
+            if all_configs and current_config:
+                edit_config = current_config
+            
             config_name = st.text_input(
                 "配置名称",
-                value=current_config.name if current_config else "default",
+                value=edit_config.name if edit_config else "",
                 help="为此配置起一个名称，方便管理多个 API 配置"
             )
             api_key = st.text_input(
                 "API Key",
-                value=current_config.api_key if current_config else "",
+                value=edit_config.api_key if edit_config else "",
                 type="password",
                 help="您的 API 密钥，支持 OpenAI 及兼容格式的 API"
             )
             base_url = st.text_input(
                 "Base URL",
-                value=current_config.base_url if current_config else "https://api.openai.com/v1",
+                value=edit_config.base_url if edit_config else "https://api.openai.com/v1",
                 help="API 服务地址，如 OpenAI、文心一言、豆包等"
             )
             model_id = st.text_input(
                 "Model ID",
-                value=current_config.model_id if current_config else "gpt-4",
+                value=edit_config.model_id if edit_config else "gpt-4",
                 help="模型标识符，如 gpt-4、gpt-3.5-turbo 等"
             )
+            
+            # Embedding 模型配置
+            st.markdown("---")
+            st.markdown("##### Embedding 模型 (知识库向量检索)")
+            
+            from src.api_manager import EMBEDDING_MODELS
+            
+            # 获取当前配置的 embedding 信息
+            current_embedding_provider = ""
+            current_embedding_model = ""
+            if edit_config and edit_config.embedding_model:
+                # 根据 embedding_base_url 判断当前 provider
+                emb_url = edit_config.embedding_base_url or ""
+                if "volces.com" in emb_url or "ark" in emb_url:
+                    current_embedding_provider = "doubao"
+                elif "siliconflow" in emb_url:
+                    current_embedding_provider = "siliconflow"
+                else:
+                    current_embedding_provider = "openai"
+                current_embedding_model = edit_config.embedding_model
+            
+            # Embedding 提供商选择
+            embedding_providers = ["不使用"] + list(EMBEDDING_MODELS.keys())
+            provider_names = ["不使用"] + [EMBEDDING_MODELS[k]["name"] for k in EMBEDDING_MODELS.keys()]
+            
+            # 找到当前 provider 的索引
+            provider_idx = 0
+            if current_embedding_provider in embedding_providers:
+                provider_idx = embedding_providers.index(current_embedding_provider)
+            
+            selected_provider_name = st.selectbox(
+                "Embedding 提供商",
+                provider_names,
+                index=provider_idx,
+                help="选择 Embedding 模型提供商，用于知识库向量检索"
+            )
+            
+            # 获取选中的 provider key
+            selected_provider = ""
+            if selected_provider_name != "不使用":
+                for k, v in EMBEDDING_MODELS.items():
+                    if v["name"] == selected_provider_name:
+                        selected_provider = k
+                        break
+            
+            # Embedding 模型选择
+            embedding_model = ""
+            embedding_base_url = ""
+            
+            if selected_provider and selected_provider in EMBEDDING_MODELS:
+                provider_info = EMBEDDING_MODELS[selected_provider]
+                model_options = provider_info["models"]
+                model_names = [m["name"] for m in model_options]
+                model_ids = [m["id"] for m in model_options]
+                
+                # 找到当前模型的索引
+                model_idx = 0
+                if current_embedding_model in model_ids:
+                    model_idx = model_ids.index(current_embedding_model)
+                
+                selected_model_name = st.selectbox(
+                    "Embedding 模型",
+                    model_names,
+                    index=model_idx,
+                    help="选择具体的 Embedding 模型"
+                )
+                
+                # 获取选中的模型 ID
+                for m in model_options:
+                    if m["name"] == selected_model_name:
+                        embedding_model = m["id"]
+                        break
+                
+                embedding_base_url = provider_info["base_url"]
+                
+                st.caption(f"📍 API 地址: {embedding_base_url}")
             
             col1, col2 = st.columns(2)
             with col1:
@@ -278,11 +417,18 @@ def render_api_settings():
                         api_key=api_key.strip(),
                         base_url=base_url.strip(),
                         model_id=model_id.strip(),
-                        name=config_name.strip()
+                        name=config_name.strip(),
+                        embedding_model=embedding_model,
+                        embedding_base_url=embedding_base_url
                     )
                     success, msg = api_manager.save_config(config)
                     if success:
-                        display_success("配置保存成功！")
+                        # 自动切换到新保存的配置
+                        api_manager.switch_config(config_name.strip())
+                        # 更新 RAG 系统的 API 管理器
+                        if st.session_state.rag_system:
+                            st.session_state.rag_system.update_api_manager(api_manager)
+                        display_success("配置保存成功并已激活！")
                         st.rerun()
                     else:
                         display_error(f"保存失败: {msg}")
@@ -302,8 +448,17 @@ def render_api_settings():
                             model_id=model_id.strip(),
                             name=config_name.strip()
                         )
+                        # 临时切换配置进行测试
+                        original_config = api_manager.load_config()
                         api_manager.save_config(config)
+                        api_manager.switch_config(config_name.strip())
+                        
                         success, msg = api_manager.test_connection()
+                        
+                        # 恢复原配置
+                        if original_config:
+                            api_manager.switch_config(original_config.name)
+                        
                         if success:
                             display_success(msg)
                         else:
@@ -422,11 +577,24 @@ def render_knowledge_base_management():
             st.metric("脚本总数", total_scripts)
             st.caption(f"品类: {', '.join(categories)}")
             
-            # 显示 ChromaDB 状态
-            if rag_system.is_chromadb_available():
-                st.caption("🟢 向量检索已启用")
+            # 显示 向量数据库 状态
+            if rag_system.is_vector_db_available():
+                # 检查是否有 API 配置用于 embedding
+                api_config = rag_system._api_manager.load_config() if rag_system._api_manager else None
+                if api_config and api_config.has_embedding_config():
+                    # 显示当前使用的 embedding 模型
+                    emb_url = api_config.embedding_base_url or ""
+                    if "volces.com" in emb_url or "ark" in emb_url:
+                        provider_name = "豆包"
+                    elif "siliconflow" in emb_url:
+                        provider_name = "硅基流动"
+                    else:
+                        provider_name = "OpenAI"
+                    st.caption(f"🟢 向量检索已启用 ({provider_name}: {api_config.embedding_model})")
+                else:
+                    st.caption("🟡 向量数据库已安装，请配置 Embedding 模型")
             else:
-                st.caption("🟡 使用关键词检索（ChromaDB 未安装）")
+                st.caption("🔴 向量数据库未安装")
         except Exception as e:
             display_error("获取知识库状态失败", str(e))
         

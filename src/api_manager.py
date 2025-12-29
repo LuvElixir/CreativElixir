@@ -20,6 +20,8 @@ class APIConfig:
     base_url: str
     model_id: str
     name: str = "default"
+    embedding_model: str = ""  # embedding 模型 ID
+    embedding_base_url: str = ""  # embedding API 地址（可选，默认使用 base_url）
     
     def is_valid(self) -> tuple[bool, str]:
         """验证配置是否有效"""
@@ -32,6 +34,45 @@ class APIConfig:
         if not self.base_url.startswith(("http://", "https://")):
             return False, "Base URL 格式错误，必须以 http:// 或 https:// 开头"
         return True, ""
+    
+    def has_embedding_config(self) -> bool:
+        """检查是否配置了 embedding 模型"""
+        return bool(self.embedding_model and self.embedding_model.strip())
+
+
+# 预定义的 Embedding 模型列表
+EMBEDDING_MODELS = {
+    "doubao": {
+        "name": "豆包 (火山引擎)",
+        "models": [
+            {"id": "doubao-embedding-vision-250615", "name": "doubao-embedding-vision (2048维)", "dim": 2048},
+        ],
+        "base_url": "https://ark.cn-beijing.volces.com/api/v3/embeddings/multimodal",
+        "api_type": "doubao"
+    },
+    "siliconflow": {
+        "name": "硅基流动 (SiliconFlow)",
+        "models": [
+            {"id": "BAAI/bge-large-zh-v1.5", "name": "BGE-Large-ZH (1024维)", "dim": 1024},
+            {"id": "BAAI/bge-m3", "name": "BGE-M3 (1024维)", "dim": 1024},
+            {"id": "Qwen/Qwen3-Embedding-8B", "name": "Qwen3-Embedding-8B (可变维度)", "dim": 1024},
+            {"id": "Qwen/Qwen3-Embedding-4B", "name": "Qwen3-Embedding-4B (可变维度)", "dim": 1024},
+            {"id": "Qwen/Qwen3-Embedding-0.6B", "name": "Qwen3-Embedding-0.6B (可变维度)", "dim": 1024},
+        ],
+        "base_url": "https://api.siliconflow.cn/v1/embeddings",
+        "api_type": "openai"
+    },
+    "openai": {
+        "name": "OpenAI",
+        "models": [
+            {"id": "text-embedding-ada-002", "name": "text-embedding-ada-002 (1536维)", "dim": 1536},
+            {"id": "text-embedding-3-small", "name": "text-embedding-3-small (1536维)", "dim": 1536},
+            {"id": "text-embedding-3-large", "name": "text-embedding-3-large (3072维)", "dim": 3072},
+        ],
+        "base_url": "https://api.openai.com/v1/embeddings",
+        "api_type": "openai"
+    }
+}
 
 
 @dataclass
@@ -102,7 +143,9 @@ class APIManager:
                     api_key=config_dict.get('api_key', ''),
                     base_url=config_dict.get('base_url', ''),
                     model_id=config_dict.get('model_id', ''),
-                    name=config_dict.get('name', 'default')
+                    name=config_dict.get('name', 'default'),
+                    embedding_model=config_dict.get('embedding_model', ''),
+                    embedding_base_url=config_dict.get('embedding_base_url', '')
                 )
                 self._client = None  # 重置客户端，下次使用时重新创建
                 break
@@ -162,7 +205,9 @@ class APIManager:
                 api_key=config_dict.get('api_key', ''),
                 base_url=config_dict.get('base_url', ''),
                 model_id=config_dict.get('model_id', ''),
-                name=config_dict.get('name', 'default')
+                name=config_dict.get('name', 'default'),
+                embedding_model=config_dict.get('embedding_model', ''),
+                embedding_base_url=config_dict.get('embedding_base_url', '')
             ))
         return configs
     
@@ -184,7 +229,9 @@ class APIManager:
                     api_key=config_dict.get('api_key', ''),
                     base_url=config_dict.get('base_url', ''),
                     model_id=config_dict.get('model_id', ''),
-                    name=config_dict.get('name', 'default')
+                    name=config_dict.get('name', 'default'),
+                    embedding_model=config_dict.get('embedding_model', ''),
+                    embedding_base_url=config_dict.get('embedding_base_url', '')
                 )
                 found = True
                 break
