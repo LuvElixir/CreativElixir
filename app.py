@@ -157,6 +157,11 @@ def init_session_state():
             st.session_state.project_manager = None
             st.session_state.init_error_project = str(e)
     
+    # 设置 PromptManager 的 API 管理器引用
+    if st.session_state.api_manager:
+        from src.prompts import PromptManager
+        PromptManager.set_api_manager(st.session_state.api_manager)
+    
     if "current_project" not in st.session_state:
         st.session_state.current_project = None
     if "generated_script" not in st.session_state:
@@ -201,6 +206,11 @@ def render_sidebar():
         
         # API 设置
         render_api_settings()
+        
+        st.markdown("---")
+        
+        # 提示词管理
+        render_prompt_management()
         
         st.markdown("---")
         
@@ -476,6 +486,92 @@ def render_api_settings():
                             display_error(msg)
                     except Exception as e:
                         display_error("测试连接时发生错误", str(e))
+
+
+def render_prompt_management():
+    """渲染提示词管理区域"""
+    with st.expander("📝 提示词管理", expanded=False):
+        api_manager = st.session_state.api_manager
+        
+        if api_manager is None:
+            display_error("API 管理器未初始化")
+            return
+        
+        from src.prompts import PromptManager
+        
+        # 设置 API 管理器引用
+        PromptManager.set_api_manager(api_manager)
+        
+        st.markdown("#### 自定义提示词")
+        st.caption("修改提示词可以调整脚本生成的风格和输出格式")
+        
+        # 提示词类型选择
+        prompt_types = {
+            "draft": "脚本生成",
+            "review": "脚本评审", 
+            "refine": "脚本修正"
+        }
+        
+        selected_type = st.selectbox(
+            "选择提示词类型",
+            list(prompt_types.keys()),
+            format_func=lambda x: prompt_types[x],
+            help="选择要编辑的提示词类型"
+        )
+        
+        # 获取当前提示词（自定义或默认）
+        custom_prompt = api_manager.get_prompt(selected_type)
+        default_prompt = PromptManager.get_default_template(selected_type)
+        
+        current_prompt = custom_prompt if custom_prompt else default_prompt
+        is_custom = custom_prompt is not None
+        
+        # 显示状态
+        if is_custom:
+            st.info("📝 当前使用自定义提示词")
+        else:
+            st.info("📋 当前使用默认提示词")
+        
+        # 提示词编辑区
+        st.markdown("##### 提示词内容")
+        st.caption("可用变量: {game_intro}, {usp}, {target_audience}, {category}, {references}, {script}, {review_feedback}")
+        
+        edited_prompt = st.text_area(
+            "编辑提示词",
+            value=current_prompt,
+            height=400,
+            key=f"prompt_editor_{selected_type}",
+            label_visibility="collapsed"
+        )
+        
+        # 操作按钮
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("💾 保存", use_container_width=True, key=f"save_prompt_{selected_type}"):
+                if edited_prompt.strip():
+                    success, msg = api_manager.save_prompt(selected_type, edited_prompt)
+                    if success:
+                        display_success("提示词已保存")
+                        st.rerun()
+                    else:
+                        display_error(f"保存失败: {msg}")
+                else:
+                    display_error("提示词内容不能为空")
+        
+        with col2:
+            if st.button("🔄 重置", use_container_width=True, key=f"reset_prompt_{selected_type}"):
+                success, msg = api_manager.reset_prompt(selected_type)
+                if success:
+                    display_success("已重置为默认提示词")
+                    st.rerun()
+                else:
+                    display_error(f"重置失败: {msg}")
+        
+        with col3:
+            if st.button("📋 复制默认", use_container_width=True, key=f"copy_default_{selected_type}"):
+                st.session_state[f"prompt_editor_{selected_type}"] = default_prompt
+                st.rerun()
 
 
 def render_project_management():

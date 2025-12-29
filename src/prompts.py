@@ -347,6 +347,28 @@ class PromptManager:
         "休闲": CASUAL_PROMPT,
     }
     
+    # API 管理器引用（用于加载自定义提示词）
+    _api_manager = None
+    
+    @classmethod
+    def set_api_manager(cls, api_manager):
+        """设置 API 管理器引用"""
+        cls._api_manager = api_manager
+    
+    @classmethod
+    def get_custom_prompt(cls, prompt_name: str) -> Optional[str]:
+        """获取自定义提示词"""
+        if cls._api_manager:
+            return cls._api_manager.get_prompt(prompt_name)
+        return None
+    
+    @classmethod
+    def get_default_template(cls, prompt_name: str) -> str:
+        """获取默认提示词模板"""
+        if prompt_name in cls.DEFAULT_PROMPTS:
+            return cls.DEFAULT_PROMPTS[prompt_name].template
+        return ""
+    
     @classmethod
     def get_draft_prompt(
         cls,
@@ -369,6 +391,20 @@ class PromptManager:
         Returns:
             格式化后的 Prompt
         """
+        # 首先检查是否有自定义提示词
+        custom_prompt = cls.get_custom_prompt("draft")
+        if custom_prompt:
+            try:
+                return custom_prompt.format(
+                    game_intro=game_intro,
+                    usp=usp,
+                    target_audience=target_audience,
+                    category=category,
+                    references=references
+                )
+            except KeyError:
+                pass  # 格式化失败，使用默认
+        
         # 尝试使用品类特化 Prompt
         if category in cls.CATEGORY_PROMPTS:
             prompt_template = cls.CATEGORY_PROMPTS[category]
@@ -410,6 +446,20 @@ class PromptManager:
         Returns:
             格式化后的 Prompt
         """
+        # 首先检查是否有自定义提示词
+        custom_prompt = cls.get_custom_prompt("review")
+        if custom_prompt:
+            try:
+                return custom_prompt.format(
+                    game_intro=game_intro,
+                    usp=usp,
+                    target_audience=target_audience,
+                    category=category,
+                    script=script
+                )
+            except KeyError:
+                pass  # 格式化失败，使用默认
+        
         return cls.DEFAULT_PROMPTS["review"].format(
             game_intro=game_intro,
             usp=usp,
@@ -442,6 +492,21 @@ class PromptManager:
         Returns:
             格式化后的 Prompt
         """
+        # 首先检查是否有自定义提示词
+        custom_prompt = cls.get_custom_prompt("refine")
+        if custom_prompt:
+            try:
+                return custom_prompt.format(
+                    game_intro=game_intro,
+                    usp=usp,
+                    target_audience=target_audience,
+                    category=category,
+                    script=script,
+                    review_feedback=review_feedback
+                )
+            except KeyError:
+                pass  # 格式化失败，使用默认
+        
         return cls.DEFAULT_PROMPTS["refine"].format(
             game_intro=game_intro,
             usp=usp,

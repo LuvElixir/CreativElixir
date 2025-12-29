@@ -90,6 +90,7 @@ class ConfigStore:
     categories: list[str] = field(default_factory=lambda: [
         "SLG", "MMO", "休闲", "卡牌", "二次元", "模拟经营"
     ])
+    prompts: dict = field(default_factory=dict)  # 自定义提示词存储
 
 
 class APIManager:
@@ -117,7 +118,8 @@ class APIManager:
                     self._store = ConfigStore(
                         api_configs=data.get('api_configs', []),
                         active_config=data.get('active_config', 'default'),
-                        categories=data.get('categories', ConfigStore().categories)
+                        categories=data.get('categories', ConfigStore().categories),
+                        prompts=data.get('prompts', {})
                     )
                     # 加载活动配置
                     self._load_active_config()
@@ -133,7 +135,8 @@ class APIManager:
                 json.dump({
                     'api_configs': self._store.api_configs,
                     'active_config': self._store.active_config,
-                    'categories': self._store.categories
+                    'categories': self._store.categories,
+                    'prompts': self._store.prompts
                 }, f, ensure_ascii=False, indent=2)
             return True
         except Exception:
@@ -451,3 +454,67 @@ class APIManager:
     def get_active_config_name(self) -> str:
         """获取当前活动配置的名称"""
         return self._store.active_config if self._store else "default"
+
+    # ==================== 提示词管理 ====================
+    
+    def get_prompt(self, prompt_name: str) -> Optional[str]:
+        """
+        获取自定义提示词
+        
+        Args:
+            prompt_name: 提示词名称 (draft, review, refine)
+            
+        Returns:
+            自定义提示词内容，如果没有则返回 None
+        """
+        if not self._store or not self._store.prompts:
+            return None
+        return self._store.prompts.get(prompt_name)
+    
+    def save_prompt(self, prompt_name: str, content: str) -> tuple[bool, str]:
+        """
+        保存自定义提示词
+        
+        Args:
+            prompt_name: 提示词名称
+            content: 提示词内容
+            
+        Returns:
+            (成功标志, 错误信息)
+        """
+        if not self._store:
+            return False, "配置存储未初始化"
+        
+        self._store.prompts[prompt_name] = content
+        
+        if not self._save_store():
+            return False, "保存配置文件失败"
+        
+        return True, ""
+    
+    def reset_prompt(self, prompt_name: str) -> tuple[bool, str]:
+        """
+        重置提示词为默认值
+        
+        Args:
+            prompt_name: 提示词名称
+            
+        Returns:
+            (成功标志, 错误信息)
+        """
+        if not self._store:
+            return False, "配置存储未初始化"
+        
+        if prompt_name in self._store.prompts:
+            del self._store.prompts[prompt_name]
+            
+            if not self._save_store():
+                return False, "保存配置文件失败"
+        
+        return True, ""
+    
+    def get_all_prompts(self) -> dict:
+        """获取所有自定义提示词"""
+        if not self._store:
+            return {}
+        return self._store.prompts.copy()
