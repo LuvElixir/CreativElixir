@@ -7,13 +7,14 @@ RAG 知识库系统模块
 
 import json
 import os
+import re
 import shutil
 import uuid
 import zipfile
 from dataclasses import dataclass, asdict, field
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Protocol, runtime_checkable
+from typing import Optional, Protocol, runtime_checkable, Union
 
 # 尝试导入向量数据库，优先使用 FAISS
 try:
@@ -38,6 +39,138 @@ class ScriptMetadata:
     performance: str = ""  # 爆款、普通等
     source: str = "user_archive"  # user_archive, import
     archived_at: str = field(default_factory=lambda: datetime.now().isoformat())
+
+
+@dataclass
+class EnhancedScriptMetadata:
+    """增强型脚本元数据，支持丰富的标签体系以实现精准检索"""
+    game_name: str = "未知"
+    category: str = "其他"
+    gameplay_tags: list = field(default_factory=list)
+    hook_type: str = ""
+    visual_style: str = ""
+    summary: str = ""
+    source: str = "user_capture"
+    archived_at: str = field(default_factory=lambda: datetime.now().isoformat())
+    
+    @classmethod
+    def from_legacy(cls, legacy: ScriptMetadata) -> "EnhancedScriptMetadata":
+        """从旧版 ScriptMetadata 转换，保持向后兼容"""
+        return cls(
+            game_name=legacy.game_name if legacy.game_name else "未知",
+            category="其他",
+            gameplay_tags=[],
+            hook_type="",
+            visual_style="",
+            summary="",
+            source=legacy.source,
+            archived_at=legacy.archived_at
+        )
+    
+    def to_dict(self) -> dict:
+        """序列化为字典"""
+        return {
+            "game_name": self.game_name,
+            "category": self.category,
+            "gameplay_tags": self.gameplay_tags,
+            "hook_type": self.hook_type,
+            "visual_style": self.visual_style,
+            "summary": self.summary,
+            "source": self.source,
+            "archived_at": self.archived_at
+        }
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> "EnhancedScriptMetadata":
+        """从字典反序列化，缺失字段使用默认值"""
+        return cls(
+            game_name=data.get("game_name", "未知"),
+            category=data.get("category", "其他"),
+            gameplay_tags=data.get("gameplay_tags", []),
+            hook_type=data.get("hook_type", ""),
+            visual_style=data.get("visual_style", ""),
+            summary=data.get("summary", ""),
+            source=data.get("source", "user_capture"),
+            archived_at=data.get("archived_at", datetime.now().isoformat())
+        )
+
+
+def extract_json_from_response(response: str) -> Optional[dict]:
+    """
+    尝试从 LLM 响应中提取 JSON
+    
+    按以下顺序尝试：
+    1. 直接尝试 json.loads
+    2. 尝试从 ```json ... ``` 代码块提取
+    3. 尝试从 ``` ... ``` 代码块提取
+    4. 返回 None 表示失败
+    
+    Args:
+        response: LLM 响应字符串
+        
+    Returns:
+        解析后的字典，如果解析失败则返回 None
+    """
+    if not response or not response.strip():
+        return None
+    
+    # 1. 直接尝试解析
+    try:
+        return json.loads(response)
+    except json.JSONDecodeError:
+        pass
+    
+    # 2. 尝试从 ```json 代码块提取
+    json_block_pattern = r'```json\s*([\s\S]*?)\s*```'
+    match = re.search(json_block_pattern, response)
+    if match:
+        try:
+            return json.loads(match.group(1))
+        except json.JSONDecodeError:
+            pass
+    
+    # 3. 尝试从普通代码块提取
+    code_block_pattern = r'```\s*([\s\S]*?)\s*```'
+    match = re.search(code_block_pattern, response)
+    if match:
+        try:
+            return json.loads(match.group(1))
+        except json.JSONDecodeError:
+            pass
+    
+    return None
+
+
+def parse_auto_tag_response(
+    response: str
+) -> tuple[bool, Union[EnhancedScriptMetadata, str], Optional[str]]:
+    """
+    解析 LLM 自动打标响应
+    
+    Args:
+        response: LLM 响应字符串
+        
+    Returns:
+        (success, result, raw_response)
+        - success: 是否解析成功
+        - result: 成功时为 EnhancedScriptMetadata，失败时为错误信息字符串
+        - raw_response: 解析失败时包含原始响应用于调试，成功时为 None
+    """
+    # 检查空响应
+    if not response or not response.strip():
+        return False, "AI 返回为空", None
+    
+    # 尝试提取 JSON
+    parsed_data = extract_json_from_response(response)
+    
+    if parsed_data is None:
+        # 解析失败，返回错误和原始响应
+        return False, "无法解析 JSON", response
+    
+    # 解析成功，应用默认值并创建 EnhancedScriptMetadata
+    metadata = EnhancedScriptMetadata.from_dict(parsed_data)
+    
+    return True, metadata, None
 
 
 @dataclass
@@ -1054,6 +1187,122 @@ class RAGSystem:
             if temp_import_dir.exists():
                 shutil.rmtree(temp_import_dir)
             return False, f"导入失败: {str(e)}"
+    
+    def auto_ingest_script(
+        self,
+        raw_text: str
+    ) -> tuple[bool, str, Optional[EnhancedScriptMetadata]]:
+        """
+        智能入库：自动分析文案并入库
+        
+        通过 LLM 自动提取元数据，根据品类确定存储路径，
+        同时写入文件系统和向量数据库。
+        
+        Args:
+            raw_text: 原始广告文案
+            
+        Returns:
+            (success, message, metadata)
+            - success: 是否成功
+            - message: 结果消息或错误信息
+            - metadata: 提取的元数据（成功时），失败时为 None
+        """
+        # 导入 prompts 模块
+        from src.prompts import PromptManager
+        
+        # 检查 API 管理器
+        if not self._api_manager:
+            return False, "未配置 API 管理器", None
+        
+        # 检查输入
+        if not raw_text or not raw_text.strip():
+            return False, "输入文案不能为空", None
+        
+        # 格式化 AUTO_TAGGING_TEMPLATE
+        prompt = PromptManager.get_auto_tagging_prompt(raw_text)
+        
+        # 调用 LLM API
+        messages = [{"role": "user", "content": prompt}]
+        success, response = self._api_manager.chat(messages)
+        
+        if not success:
+            return False, f"AI 调用失败: {response}", None
+        
+        # 解析响应
+        parse_success, result, raw_response = parse_auto_tag_response(response)
+        
+        if not parse_success:
+            # result 是错误信息字符串
+            error_msg = f"{result}"
+            if raw_response:
+                error_msg += f"\n原始响应: {raw_response[:500]}"
+            return False, error_msg, None
+        
+        # result 是 EnhancedScriptMetadata
+        metadata: EnhancedScriptMetadata = result
+        
+        # 根据 category 确定存储路径
+        category = metadata.category
+        
+        # 生成唯一 ID
+        script_id = str(uuid.uuid4())
+        
+        # 创建脚本对象（使用旧版 ScriptMetadata 以兼容现有存储结构）
+        script_metadata = ScriptMetadata(
+            game_name=metadata.game_name,
+            source=metadata.source,
+            archived_at=metadata.archived_at
+        )
+        
+        script = Script(
+            id=script_id,
+            content=raw_text,
+            category=category,
+            metadata=script_metadata
+        )
+        
+        # 保存到文件系统
+        file_saved = self._save_script_file(script)
+        if not file_saved:
+            return False, "保存到文件系统失败", None
+        
+        # 同时保存增强元数据到单独的 JSON 文件
+        try:
+            category_path = self.scripts_path / category
+            category_path.mkdir(parents=True, exist_ok=True)
+            
+            # 保存增强元数据
+            enhanced_metadata_file = category_path / f"{script_id}_enhanced.json"
+            with open(enhanced_metadata_file, 'w', encoding='utf-8') as f:
+                json.dump(metadata.to_dict(), f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            # 增强元数据保存失败不影响主流程
+            pass
+        
+        # 添加到向量数据库（如果可用）
+        if self._use_vector_db:
+            try:
+                if self._use_faiss:
+                    self._add_to_faiss(script)
+                elif CHROMADB_AVAILABLE and self._client:
+                    collection = self._get_collection(category)
+                    if collection:
+                        collection.add(
+                            ids=[script_id],
+                            documents=[raw_text],
+                            metadatas=[{
+                                "category": category,
+                                "game_name": metadata.game_name,
+                                "source": metadata.source,
+                                "archived_at": metadata.archived_at
+                            }]
+                        )
+            except Exception as e:
+                # 向量数据库添加失败不影响主流程，只记录日志
+                print(f"向量数据库添加失败: {e}")
+        
+        # 返回成功结果
+        return True, f"已归档到 [{category}] 品类", metadata
     
     def clear_knowledge_base(self) -> tuple[bool, str]:
         """

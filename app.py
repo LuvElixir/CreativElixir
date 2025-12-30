@@ -1567,20 +1567,78 @@ def render_script_generation_tab():
         st.markdown('</div>', unsafe_allow_html=True)
 
 
+def render_quick_capture_panel():
+    """
+    渲染快速采集面板
+    
+    提供纯文本粘贴入口和 AI 分析功能，实现：
+    - 展开的 expander 容器，标题为 "🚀 快速采集 (AI 智能打标)"
+    - text_area 用于粘贴广告文案
+    - "AI 分析并入库" 主按钮
+    - 点击后显示 spinner 和结果展示
+    
+    Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7
+    """
+    rag_system = st.session_state.rag_system
+    
+    with st.expander("🚀 快速采集 (AI 智能打标)", expanded=True):
+        raw_text = st.text_area(
+            "粘贴广告文案",
+            height=200,
+            placeholder="在此粘贴广告脚本文案...",
+            key="quick_capture_text"
+        )
+        
+        if st.button("AI 分析并入库", type="primary", key="quick_capture_btn"):
+            if not raw_text or not raw_text.strip():
+                display_warning("请先粘贴广告文案")
+            elif rag_system is None:
+                display_error("知识库系统未初始化")
+            else:
+                with st.spinner("AI 正在阅读并打标签..."):
+                    try:
+                        success, message, metadata = rag_system.auto_ingest_script(raw_text)
+                        
+                        if success:
+                            # 显示成功消息，包含归档品类
+                            category = metadata.category if metadata else "其他"
+                            display_success(f"✅ 入库成功！已归档至品类: {category}")
+                            
+                            # 显示提取的元数据 JSON
+                            if metadata:
+                                st.markdown("**提取的元数据:**")
+                                import json
+                                metadata_json = json.dumps(metadata.to_dict(), ensure_ascii=False, indent=2)
+                                st.code(metadata_json, language="json")
+                        else:
+                            # 显示错误信息
+                            display_error(f"入库失败: {message}")
+                    except Exception as e:
+                        display_error(f"处理异常: {str(e)}")
+
+
 def render_knowledge_base_tab():
     """
     渲染知识库标签页
     
     优化布局：
+    - 快速采集面板（顶部，展开状态）
     - 统计卡片区域（脚本总数、品类数量）
     - 筛选栏固定在列表上方
     - 脚本列表使用卡片样式
     - 每个脚本卡片显示品类徽章、游戏名称、入库时间
     - 支持展开/收起查看详情
+    - 批量导入工具（底部，折叠状态）
     
-    Requirements: 4.1, 4.2, 4.3, 4.4, 4.5
+    Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 5.1, 5.2, 5.3, 5.4
     """
     st.markdown("### 知识库浏览")
+    
+    # ==================== 快速采集面板（顶部） ====================
+    # Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 5.3, 5.4
+    render_quick_capture_panel()
+    
+    st.markdown("---")
     
     rag_system = st.session_state.rag_system
     
@@ -1650,32 +1708,34 @@ def render_knowledge_base_tab():
     
     st.markdown("---")
     
-    # 导入导出区域
+    # ==================== 数据管理区域 ====================
     st.markdown("#### 数据管理")
-    col1, col2 = st.columns(2)
     
-    with col1:
-        if st.button("导出知识库", use_container_width=True, type="secondary"):
-            with st.spinner("正在导出..."):
-                try:
-                    export_path = "./data/knowledge_base_export"
-                    success, result = rag_system.export_knowledge_base(export_path)
-                    if success:
-                        with open(result, "rb") as f:
-                            st.download_button(
-                                label="下载导出文件",
-                                data=f,
-                                file_name="knowledge_base.zip",
-                                mime="application/zip",
-                                use_container_width=True
-                            )
-                    else:
-                        display_error(result)
-                except Exception as e:
-                    display_error("导出失败", str(e))
+    # 导出按钮（保持可见）
+    if st.button("导出知识库", use_container_width=False, type="secondary"):
+        with st.spinner("正在导出..."):
+            try:
+                export_path = "./data/knowledge_base_export"
+                success, result = rag_system.export_knowledge_base(export_path)
+                if success:
+                    with open(result, "rb") as f:
+                        st.download_button(
+                            label="下载导出文件",
+                            data=f,
+                            file_name="knowledge_base.zip",
+                            mime="application/zip",
+                            use_container_width=False
+                        )
+                else:
+                    display_error(result)
+            except Exception as e:
+                display_error("导出失败", str(e))
     
-    with col2:
-        uploaded = st.file_uploader("导入知识库", type=["zip"], key="kb_tab_import", label_visibility="collapsed")
+    # ==================== 批量导入工具（折叠状态） ====================
+    # Requirements: 5.1, 5.2, 5.3, 5.4
+    with st.expander("📦 批量导入工具 (高级)", expanded=False):
+        st.caption("通过 ZIP 文件批量导入脚本到知识库")
+        uploaded = st.file_uploader("选择 ZIP 文件", type=["zip"], key="kb_tab_import")
         if uploaded:
             if st.button("确认导入", use_container_width=True, type="primary"):
                 with st.spinner("正在导入..."):

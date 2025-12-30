@@ -32,6 +32,41 @@ class PromptTemplate:
             raise ValueError(f"模板 '{self.name}' 缺少必要变量: {e}")
 
 
+# ==================== 智能资产管理 - 自动打标 Prompt ====================
+
+AUTO_TAGGING_TEMPLATE = """你是一个资深的游戏广告数据分析师。
+你的任务是将用户输入的非结构化广告文案，转化为结构化的元数据。
+
+## 输入文案
+{raw_content}
+
+## 分析要求
+请分析上述文案，提取以下关键信息，并严格以 JSON 格式输出：
+
+1. **game_name**: 推测游戏名称（如无法推测，填"未知"）
+2. **category**: 游戏核心品类（选填: SLG, MMO, 卡牌, 休闲, 二次元, 模拟经营, 射击, 其他）
+3. **gameplay_tags**: 文案中涉及的具体玩法标签列表（如: "抽卡", "攻城", "合成", "捏脸"），不超过3个
+4. **hook_type**: 脚本前3秒的吸睛手段（如: "福利诱惑", "巨大反差", "失败展示", "用户证言"）
+5. **visual_style**: 脚本暗示的画面风格
+6. **summary**: 一句话概括脚本核心剧情
+
+## 输出示例 (JSON Only)
+{{
+    "game_name": "万国觉醒",
+    "category": "SLG",
+    "gameplay_tags": ["多文明混战", "行军策略"],
+    "hook_type": "巨大反差",
+    "visual_style": "美式卡通",
+    "summary": "通过展示曹操打败凯撒的跨时空对决，体现多文明策略玩法。"
+}}"""
+
+AUTO_TAGGING_PROMPT = PromptTemplate(
+    template=AUTO_TAGGING_TEMPLATE,
+    name="auto_tagging",
+    description="智能资产管理 - AI 自动打标 Prompt"
+)
+
+
 # ==================== 脚本生成 Prompt ====================
 
 DRAFT_GENERATION_TEMPLATE = """你是一位专业的游戏广告创意专家，擅长创作吸引人的信息流广告脚本。
@@ -326,6 +361,7 @@ class PromptManager:
         "refine": REFINE_PROMPT,
         "quick": QUICK_GENERATION_PROMPT,
         "advanced_review": ADVANCED_REVIEW_PROMPT,
+        "auto_tagging": AUTO_TAGGING_PROMPT,
     }
     
     # 品类特化 Prompt
@@ -537,6 +573,21 @@ class PromptManager:
             usp=usp,
             target_audience=target_audience,
             category=category
+        )
+    
+    @classmethod
+    def get_auto_tagging_prompt(cls, raw_content: str) -> str:
+        """
+        获取自动打标 Prompt
+        
+        Args:
+            raw_content: 原始广告文案
+            
+        Returns:
+            格式化后的 Prompt
+        """
+        return cls.DEFAULT_PROMPTS["auto_tagging"].format(
+            raw_content=raw_content
         )
     
     @classmethod
