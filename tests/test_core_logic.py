@@ -202,17 +202,17 @@ class TestReviewScriptIntegration:
     """评审流程集成测试"""
     
     def test_review_uses_rev_api(self):
-        """验证评审流程使用 rev_api"""
+        """验证评审流程使用 rev_api 的 stream_chat"""
         gen_api = Mock()
         rev_api = Mock()
         rag_system = Mock()
         
-        # 设置 RAG 返回
-        rag_system.get_high_performing_traits.return_value = "测试特征"
+        # 设置 RAG 返回（现在使用 get_comprehensive_traits）
+        rag_system.get_comprehensive_traits.return_value = "测试特征"
         rag_system.HIGH_PERFORMING_TRAITS = {"DEFAULT": "默认特征"}
         
-        # 设置 rev_api 返回
-        rev_api.chat.return_value = (True, "评审结果")
+        # 设置 rev_api stream_chat 返回（Generator 模拟）
+        rev_api.stream_chat.return_value = iter(["评审", "结果"])
         rev_api.load_config.return_value = Mock(model_id="gpt-4", name="评审模型")
         
         generator = ScriptGenerator(
@@ -229,11 +229,15 @@ class TestReviewScriptIntegration:
             category="SLG"
         )
         
-        result = generator._review_script(input_data, "测试脚本")
+        # _review_script 现在返回 Generator，需要迭代消费
+        result = list(generator._review_script(input_data, "测试脚本"))
         
-        # 验证使用了 rev_api 而不是 gen_api
-        rev_api.chat.assert_called_once()
-        gen_api.chat.assert_not_called()
+        # 验证使用了 rev_api.stream_chat 而不是 gen_api
+        rev_api.stream_chat.assert_called_once()
+        gen_api.stream_chat.assert_not_called()
         
-        # 验证调用了 RAG 特征检索
-        rag_system.get_high_performing_traits.assert_called_once_with("SLG")
+        # 验证调用了 RAG 综合特征检索
+        rag_system.get_comprehensive_traits.assert_called_once()
+        
+        # 验证返回的内容
+        assert result == ["评审", "结果"]

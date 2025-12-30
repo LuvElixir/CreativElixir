@@ -105,7 +105,7 @@ class TestDualModelArchitecture:
         rev_api.stream_chat.assert_not_called()
     
     def test_review_uses_rev_api(self):
-        """验证评审流程使用 rev_api (Requirements: 1.4)"""
+        """验证评审流程使用 rev_api 的 stream_chat (Requirements: 1.4)"""
         gen_api = Mock()
         rev_api = Mock()
         rag_system = Mock()
@@ -120,7 +120,7 @@ class TestDualModelArchitecture:
         rev_config.model_id = "gpt-4"
         rev_config.name = "评审模型"
         rev_api.load_config.return_value = rev_config
-        rev_api.chat.return_value = (True, "评审结果")
+        rev_api.stream_chat.return_value = iter(["评审", "结果"])
         
         rag_system.get_high_performing_traits.return_value = "测试特征"
         rag_system.HIGH_PERFORMING_TRAITS = {"DEFAULT": "默认特征"}
@@ -138,12 +138,12 @@ class TestDualModelArchitecture:
             category="SLG"
         )
         
-        # 执行评审
-        result = generator._review_script(input_data, "测试脚本")
+        # 执行评审（现在返回 Generator，需要迭代消费）
+        result = list(generator._review_script(input_data, "测试脚本"))
         
-        # 验证使用了 rev_api
-        rev_api.chat.assert_called_once()
-        gen_api.chat.assert_not_called()
+        # 验证使用了 rev_api.stream_chat
+        rev_api.stream_chat.assert_called_once()
+        gen_api.stream_chat.assert_not_called()
     
     def test_logging_shows_correct_model_calls(self):
         """验证日志显示正确的模型调用 (Requirements: 1.5)"""
@@ -161,7 +161,7 @@ class TestDualModelArchitecture:
         rev_config.model_id = "gpt-4"
         rev_config.name = "评审模型"
         rev_api.load_config.return_value = rev_config
-        rev_api.chat.return_value = (True, "评审结果")
+        rev_api.stream_chat.return_value = iter(["评审", "结果"])
         
         rag_system.get_high_performing_traits.return_value = "测试特征"
         rag_system.HIGH_PERFORMING_TRAITS = {"DEFAULT": "默认特征"}
@@ -179,8 +179,8 @@ class TestDualModelArchitecture:
             category="SLG"
         )
         
-        # 执行评审
-        result = generator._review_script(input_data, "测试脚本")
+        # 执行评审（现在返回 Generator，需要迭代消费）
+        result = list(generator._review_script(input_data, "测试脚本"))
         
         # 验证 rev_api.load_config 被调用以获取模型信息用于日志记录
         # _review_script 方法内部会调用 rev_api.load_config() 来获取模型信息并记录日志
@@ -345,7 +345,7 @@ class TestBackwardCompatibility:
         gen_config.model_id = "gpt-3.5-turbo"
         gen_config.name = "生成模型"
         gen_api.load_config.return_value = gen_config
-        gen_api.chat.return_value = (True, "评审结果：脚本质量良好")
+        gen_api.stream_chat.return_value = iter(["评审结果", "：脚本质量良好"])
         
         rag_system.get_high_performing_traits.return_value = "测试特征"
         rag_system.HIGH_PERFORMING_TRAITS = {"DEFAULT": "默认特征"}
@@ -363,13 +363,13 @@ class TestBackwardCompatibility:
             category="SLG"
         )
         
-        # 执行评审
-        result = generator._review_script(input_data, "测试脚本")
+        # 执行评审（现在返回 Generator，需要迭代消费）
+        result = "".join(generator._review_script(input_data, "测试脚本"))
         
         # 验证评审成功
         assert "评审结果" in result
         # 验证使用了 gen_api（因为 rev_api 回退到 gen_api）
-        gen_api.chat.assert_called_once()
+        gen_api.stream_chat.assert_called_once()
     
     def test_default_review_model_uses_generation_model(self):
         """验证不选择评审模型时默认使用生成模型 (Requirements: 5.3)"""
@@ -433,7 +433,7 @@ class TestReviewScriptRAGIntegration:
     """评审流程 RAG 集成测试"""
     
     def test_review_script_calls_rag_traits(self):
-        """验证 _review_script 调用 RAG 特征检索"""
+        """验证 _review_script 调用 RAG 综合特征检索"""
         gen_api = Mock()
         rev_api = Mock()
         rag_system = Mock()
@@ -447,9 +447,10 @@ class TestReviewScriptRAGIntegration:
         rev_config.model_id = "gpt-4"
         rev_config.name = "评审模型"
         rev_api.load_config.return_value = rev_config
-        rev_api.chat.return_value = (True, "评审结果")
+        rev_api.stream_chat.return_value = iter(["评审", "结果"])
         
-        rag_system.get_high_performing_traits.return_value = "SLG高转化特征"
+        # 现在使用 get_comprehensive_traits
+        rag_system.get_comprehensive_traits.return_value = "SLG高转化特征"
         rag_system.HIGH_PERFORMING_TRAITS = {"DEFAULT": "默认特征"}
         
         generator = ScriptGenerator(
@@ -465,10 +466,11 @@ class TestReviewScriptRAGIntegration:
             category="SLG"
         )
         
-        generator._review_script(input_data, "测试脚本")
+        # 执行评审（现在返回 Generator，需要迭代消费）
+        result = list(generator._review_script(input_data, "测试脚本"))
         
-        # 验证调用了 RAG 特征检索
-        rag_system.get_high_performing_traits.assert_called_once_with("SLG")
+        # 验证调用了 RAG 综合特征检索
+        rag_system.get_comprehensive_traits.assert_called_once()
     
     def test_review_script_handles_rag_failure(self):
         """验证 RAG 特征获取失败时使用默认特征"""
@@ -485,10 +487,10 @@ class TestReviewScriptRAGIntegration:
         rev_config.model_id = "gpt-4"
         rev_config.name = "评审模型"
         rev_api.load_config.return_value = rev_config
-        rev_api.chat.return_value = (True, "评审结果")
+        rev_api.stream_chat.return_value = iter(["评审", "结果"])
         
-        # 模拟 RAG 获取失败
-        rag_system.get_high_performing_traits.side_effect = Exception("RAG 获取失败")
+        # 模拟 RAG 获取失败（现在使用 get_comprehensive_traits）
+        rag_system.get_comprehensive_traits.side_effect = Exception("RAG 获取失败")
         rag_system.HIGH_PERFORMING_TRAITS = {"DEFAULT": "默认通用特征"}
         
         generator = ScriptGenerator(
@@ -505,7 +507,8 @@ class TestReviewScriptRAGIntegration:
         )
         
         # 应该不抛出异常，而是使用默认特征继续
-        result = generator._review_script(input_data, "测试脚本")
+        # 执行评审（现在返回 Generator，需要迭代消费）
+        result = "".join(generator._review_script(input_data, "测试脚本"))
         
         # 验证评审仍然成功
         assert "评审结果" in result

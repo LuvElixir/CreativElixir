@@ -21,6 +21,8 @@ class GenerationInput:
     usp: str
     target_audience: str
     category: str
+    theme: Optional[str] = None  # 游戏题材
+    gameplay: Optional[str] = None  # 核心玩法
     
     def validate(self) -> tuple[bool, str]:
         """
@@ -72,6 +74,35 @@ class GenerationStep:
     status: str     # pending, running, completed, failed
     content: str = ""
     timestamp: datetime = field(default_factory=datetime.now)
+
+
+def _clean_html_tags(text: str) -> str:
+    """
+    清理文本中的 HTML 标签
+    
+    Args:
+        text: 原始文本
+        
+    Returns:
+        清理后的文本
+    """
+    if not text:
+        return text
+    
+    # 移除常见的 HTML 标签
+    # <br>, <br/>, <br />, <p>, </p>, <div>, </div> 等
+    cleaned = re.sub(r'<br\s*/?>', '；', text)  # 将 <br> 替换为分号
+    cleaned = re.sub(r'</?p\s*/?>', '', cleaned)  # 移除 <p> 标签
+    cleaned = re.sub(r'</?div\s*/?>', '', cleaned)  # 移除 <div> 标签
+    cleaned = re.sub(r'</?span[^>]*>', '', cleaned)  # 移除 <span> 标签
+    cleaned = re.sub(r'<[^>]+>', '', cleaned)  # 移除其他所有 HTML 标签
+    
+    # 清理多余的分号和空格
+    cleaned = re.sub(r'；+', '；', cleaned)  # 合并连续分号
+    cleaned = re.sub(r'^\s*；\s*', '', cleaned)  # 移除开头的分号
+    cleaned = re.sub(r'\s*；\s*$', '', cleaned)  # 移除结尾的分号
+    
+    return cleaned.strip()
 
 
 def parse_script_output(raw_script: str) -> ScriptOutput:
@@ -174,9 +205,10 @@ def _parse_markdown_table(text: str) -> Optional[ScriptOutput]:
     for line in table_lines[1:]:
         cells = [cell.strip() for cell in line.split('|') if cell.strip()]
         if len(cells) >= 3:
-            storyboard.append(cells[storyboard_idx] if storyboard_idx < len(cells) else "")
-            voiceover.append(cells[voiceover_idx] if voiceover_idx < len(cells) else "")
-            design_intent.append(cells[design_idx] if design_idx < len(cells) else "")
+            # 清理 HTML 标签
+            storyboard.append(_clean_html_tags(cells[storyboard_idx] if storyboard_idx < len(cells) else ""))
+            voiceover.append(_clean_html_tags(cells[voiceover_idx] if voiceover_idx < len(cells) else ""))
+            design_intent.append(_clean_html_tags(cells[design_idx] if design_idx < len(cells) else ""))
     
     if not storyboard:
         return None
@@ -217,18 +249,18 @@ def _parse_delimiter_format(text: str) -> Optional[ScriptOutput]:
         if '|' in stripped:
             parts = [p.strip() for p in stripped.split('|') if p.strip()]
             if len(parts) >= 3:
-                storyboard.append(parts[0])
-                voiceover.append(parts[1])
-                design_intent.append(parts[2])
+                storyboard.append(_clean_html_tags(parts[0]))
+                voiceover.append(_clean_html_tags(parts[1]))
+                design_intent.append(_clean_html_tags(parts[2]))
                 continue
         
         # 尝试使用 / 分隔
         if '/' in stripped:
             parts = [p.strip() for p in stripped.split('/') if p.strip()]
             if len(parts) >= 3:
-                storyboard.append(parts[0])
-                voiceover.append(parts[1])
-                design_intent.append(parts[2])
+                storyboard.append(_clean_html_tags(parts[0]))
+                voiceover.append(_clean_html_tags(parts[1]))
+                design_intent.append(_clean_html_tags(parts[2]))
     
     if not storyboard:
         return None
@@ -255,10 +287,10 @@ def _parse_tag_format(text: str) -> Optional[ScriptOutput]:
     if not storyboard_matches or not voiceover_matches or not design_matches:
         return None
     
-    # 清理匹配结果
-    storyboard = [m.strip() for m in storyboard_matches if m.strip()]
-    voiceover = [m.strip() for m in voiceover_matches if m.strip()]
-    design_intent = [m.strip() for m in design_matches if m.strip()]
+    # 清理匹配结果和 HTML 标签
+    storyboard = [_clean_html_tags(m.strip()) for m in storyboard_matches if m.strip()]
+    voiceover = [_clean_html_tags(m.strip()) for m in voiceover_matches if m.strip()]
+    design_intent = [_clean_html_tags(m.strip()) for m in design_matches if m.strip()]
     
     # 确保长度一致
     min_len = min(len(storyboard), len(voiceover), len(design_intent))
@@ -289,9 +321,9 @@ def _parse_numbered_format(text: str) -> Optional[ScriptOutput]:
     
     for match in matches:
         if len(match) >= 4:
-            storyboard.append(match[1].strip())
-            voiceover.append(match[2].strip())
-            design_intent.append(match[3].strip())
+            storyboard.append(_clean_html_tags(match[1].strip()))
+            voiceover.append(_clean_html_tags(match[2].strip()))
+            design_intent.append(_clean_html_tags(match[3].strip()))
     
     if not storyboard:
         return None
@@ -417,7 +449,7 @@ class ScriptGenerator:
         
         yield "\n\n"
         
-        # Step 3: 评审
+        # Step 3: 评审 (流式)
         if on_step:
             on_step(GenerationStep(
                 step_name="review",
@@ -427,7 +459,10 @@ class ScriptGenerator:
         
         yield "🔍 正在评审脚本...\n\n"
         
-        review_feedback = self._review_script(input_data, draft_content)
+        review_feedback = ""
+        for chunk in self._review_script(input_data, draft_content):
+            review_feedback += chunk
+            yield f"[REVIEW]{chunk}"  # 带标记的评审内容
         
         if on_step:
             on_step(GenerationStep(
@@ -436,7 +471,7 @@ class ScriptGenerator:
                 content=review_feedback
             ))
         
-        yield f"{review_feedback}\n\n"
+        yield "\n\n"
         
         # Step 4: 迭代修正
         if on_step:
@@ -530,30 +565,39 @@ class ScriptGenerator:
         for chunk in self.api_manager.stream_chat(messages):
             yield chunk
     
-    def _review_script(self, input_data: GenerationInput, script: str) -> str:
+    def _review_script(
+        self, 
+        input_data: GenerationInput, 
+        script: str
+    ) -> Generator[str, None, None]:
         """
-        使用高级评审流程评审脚本
+        使用高级评审流程评审脚本 (流式版本)
         
         步骤:
-        1. 获取 RAG 高转化特征
+        1. 获取 RAG 综合特征（品类 + 题材 + 玩法）
         2. 构建高级评审 Prompt
-        3. 使用评审专用 API 发送请求
+        3. 使用评审专用 API 流式发送请求
         
         Args:
             input_data: 生成输入数据
             script: 待评审的脚本
             
-        Returns:
-            评审意见
+        Yields:
+            评审内容片段
         """
         import logging
         logger = logging.getLogger(__name__)
         
-        # Step 1: 获取 RAG 高转化特征
+        # Step 1: 获取 RAG 综合特征（品类 + 题材 + 玩法）
         rag_traits = None
         try:
-            rag_traits = self.rag_system.get_high_performing_traits(input_data.category)
-            logger.info(f"获取 RAG 高转化特征成功，品类: {input_data.category}")
+            # 使用综合特征方法，整合品类、题材、玩法的特征
+            rag_traits = self.rag_system.get_comprehensive_traits(
+                category=input_data.category,
+                theme=input_data.theme,
+                gameplay=input_data.gameplay
+            )
+            logger.info(f"获取 RAG 综合特征成功，品类: {input_data.category}, 题材: {input_data.theme}, 玩法: {input_data.gameplay}")
             logger.debug(f"RAG 特征内容: {rag_traits}")
         except Exception as e:
             # RAG 获取失败时使用默认特征
@@ -573,16 +617,16 @@ class ScriptGenerator:
         
         messages = [{"role": "user", "content": prompt}]
         
-        # Step 3: 使用评审专用 API（rev_api）发送请求
+        # Step 3: 使用评审专用 API（rev_api）流式发送请求
         rev_config = self.rev_api.load_config()
         if rev_config:
             logger.info(f"使用评审模型: {rev_config.model_id} ({rev_config.name})")
         
-        success, response = self.rev_api.chat(messages)
-        if success:
-            return response
-        else:
-            return f"评审失败: {response}"
+        try:
+            for chunk in self.rev_api.stream_chat(messages):
+                yield chunk
+        except Exception as e:
+            yield f"[错误] 评审过程中断: {str(e)}"
     
     def _refine_script(
         self,
@@ -653,7 +697,10 @@ class ScriptGenerator:
         
         # 评审和修正
         if use_review:
-            review_feedback = self._review_script(input_data, draft_content)
+            # 收集流式评审内容
+            review_feedback = ""
+            for chunk in self._review_script(input_data, draft_content):
+                review_feedback += chunk
             
             final_content = ""
             for chunk in self._refine_script(input_data, draft_content, review_feedback):

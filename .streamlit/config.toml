@@ -7,3 +7,4 @@ textColor = "#f9fafb"
 
 [server]
 headless = true
+runOnSave = false
