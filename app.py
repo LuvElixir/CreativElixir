@@ -36,28 +36,188 @@ def inject_custom_css():
     - 卡片容器样式
     - 输入组件圆角样式
     - 按钮样式优化
+    - 徽章组件样式
+    - 时间线组件样式
+    - 信息层级样式
+    - 响应式断点样式
     
-    Requirements: 2.1, 2.2, 2.3, 2.4, 2.5
+    Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 5.4, 7.1, 7.2, 7.3, 7.4, 8.1, 8.2, 8.3
     """
     st.markdown("""
     <style>
-    /* 隐藏 Streamlit 默认元素 */
+    /* 隐藏 Streamlit 默认元素（保留 header 以便打开侧边栏） */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* 不隐藏 header，保留侧边栏切换按钮 */
     
     /* 主应用背景 */
     .stApp {
         background-color: #111827;
     }
     
-    /* 卡片容器样式 */
+    /* 卡片容器样式 - 旧版兼容 */
     .st-card {
         background-color: #1f2937;
         border-radius: 12px;
         padding: 20px;
         border: 1px solid #374151;
         margin-bottom: 16px;
+    }
+    
+    /* ==================== 卡片组件样式 ==================== */
+    /* Requirements: 2.1, 7.3 */
+    .ui-card {
+        background-color: #1f2937;
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid #374151;
+        margin-bottom: 16px;
+        min-width: 300px;
+    }
+    
+    .ui-card-header {
+        font-size: 16px;
+        font-weight: 600;
+        color: #f9fafb;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #374151;
+    }
+    
+    /* ==================== 徽章组件样式 ==================== */
+    /* Requirements: 8.3 */
+    .ui-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+    }
+    
+    .ui-badge-primary {
+        background-color: #6366f1;
+        color: #ffffff;
+    }
+    
+    .ui-badge-secondary {
+        background-color: #374151;
+        color: #9ca3af;
+    }
+    
+    .ui-badge-success {
+        background-color: #10b981;
+        color: #ffffff;
+    }
+    
+    /* ==================== 时间线组件样式 ==================== */
+    /* Requirements: 5.4 */
+    .ui-timeline {
+        position: relative;
+        padding-left: 24px;
+    }
+    
+    .ui-timeline::before {
+        content: '';
+        position: absolute;
+        left: 8px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background-color: #374151;
+    }
+    
+    .ui-timeline-item {
+        position: relative;
+        padding-bottom: 16px;
+    }
+    
+    .ui-timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -20px;
+        top: 4px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background-color: #6366f1;
+    }
+    
+    /* ==================== 信息层级样式 ==================== */
+    /* Requirements: 8.1, 8.2 */
+    .ui-h1 {
+        font-size: 24px;
+        font-weight: 700;
+        color: #f9fafb;
+    }
+    
+    .ui-h2 {
+        font-size: 20px;
+        font-weight: 600;
+        color: #f9fafb;
+    }
+    
+    .ui-h3 {
+        font-size: 16px;
+        font-weight: 500;
+        color: #e5e7eb;
+    }
+    
+    .ui-text-secondary {
+        color: #9ca3af;
+        font-size: 14px;
+    }
+    
+    /* ==================== 页面头部样式 ==================== */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        margin-bottom: 16px;
+        border-bottom: 1px solid #374151;
+    }
+    
+    .page-header-info {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+    }
+    
+    /* ==================== 响应式断点样式 ==================== */
+    /* Requirements: 7.1, 7.2, 7.4 */
+    @media (max-width: 1200px) {
+        .responsive-cols {
+            flex-direction: column;
+        }
+        
+        .ui-card {
+            min-width: auto;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .ui-card {
+            min-width: auto;
+            padding: 16px;
+        }
+        
+        .ui-h1 {
+            font-size: 20px;
+        }
+        
+        .ui-h2 {
+            font-size: 18px;
+        }
+        
+        .ui-h3 {
+            font-size: 14px;
+        }
+    }
+    
+    /* 文本输入最小高度 */
+    /* Requirements: 7.4 */
+    .stTextArea textarea {
+        min-height: 80px;
     }
     
     /* 输入组件圆角 */
@@ -84,6 +244,74 @@ def inject_custom_css():
     }
     </style>
     """, unsafe_allow_html=True)
+
+
+# ==================== UI 辅助函数 ====================
+def render_badge(text: str, variant: str = "primary") -> str:
+    """
+    渲染徽章组件
+    
+    生成带有指定样式的徽章 HTML 字符串，用于显示品类标签、状态信息等。
+    
+    Args:
+        text: 徽章显示的文本内容
+        variant: 样式变体，可选值:
+            - "primary": 主要样式（紫色背景）
+            - "secondary": 次要样式（灰色背景）
+            - "success": 成功样式（绿色背景）
+    
+    Returns:
+        str: 徽章的 HTML 字符串
+        
+    Requirements: 8.3
+    
+    Example:
+        >>> badge_html = render_badge("SLG", "primary")
+        >>> st.markdown(badge_html, unsafe_allow_html=True)
+    """
+    return f'<span class="ui-badge ui-badge-{variant}">{text}</span>'
+
+
+def render_page_header():
+    """
+    渲染页面头部状态信息
+    
+    在页面顶部显示当前项目状态和模型配置信息，包括：
+    - 项目名称和客户名称
+    - 生成模型信息
+    - 评审模型信息（如果配置了独立的评审模型）
+    
+    未选择项目时显示"未选择项目"提示。
+    使用紧凑的单行布局展示所有状态信息。
+    
+    Requirements: 1.1, 1.2, 1.3, 1.4
+    """
+    # 获取当前状态
+    project = st.session_state.get("current_project")
+    api_manager = st.session_state.get("api_manager")
+    gen_config = api_manager.load_config() if api_manager else None
+    rev_manager = st.session_state.get("review_api_manager")
+    
+    # 构建头部信息
+    header_parts = []
+    
+    # 项目信息
+    if project:
+        header_parts.append(f"**项目:** {project.client_name} / {project.project_name}")
+    else:
+        header_parts.append("**项目:** 未选择项目")
+    
+    # 模型信息
+    if gen_config:
+        model_info = f"**生成:** {gen_config.model_id}"
+        if rev_manager:
+            rev_config = rev_manager.load_config()
+            if rev_config:
+                model_info += f" | **评审:** {rev_config.model_id}"
+        header_parts.append(model_info)
+    
+    # 使用单行紧凑布局显示
+    st.markdown(" · ".join(header_parts))
 
 
 # ==================== 导航组件 ====================
@@ -274,6 +502,12 @@ def init_session_state():
         st.session_state.generation_output = None
     if "last_error" not in st.session_state:
         st.session_state.last_error = None
+    # 评审模型相关 session state
+    # Requirements: 5.1, 5.2, 5.3
+    if "review_api_manager" not in st.session_state:
+        st.session_state.review_api_manager = None
+    if "selected_review_config" not in st.session_state:
+        st.session_state.selected_review_config = "使用生成模型"
 
 
 def check_system_health() -> Tuple[bool, list]:
@@ -325,6 +559,68 @@ def render_sidebar():
         
         # 知识库管理
         render_knowledge_base_management()
+
+
+def render_review_model_settings():
+    """渲染评审模型设置区域（独立显示）"""
+    with st.expander("🎯 评审模型设置", expanded=True):
+        api_manager = st.session_state.api_manager
+        
+        if api_manager is None:
+            display_warning("请先配置 API")
+            return
+        
+        try:
+            all_configs = api_manager.get_all_configs()
+        except Exception as e:
+            display_error("加载 API 配置失败", str(e))
+            return
+        
+        if not all_configs:
+            display_warning("请先在 API 设置中添加配置")
+            return
+        
+        config_names = [config.name for config in all_configs]
+        
+        st.caption("选择用于脚本评审的模型，可以与生成模型不同以获得多元视角")
+        
+        # 默认选项：使用生成模型
+        review_options = ["使用生成模型"] + config_names
+        
+        # 获取当前选中的评审模型
+        current_review_selection = st.session_state.get("selected_review_config", "使用生成模型")
+        if current_review_selection not in review_options:
+            current_review_selection = "使用生成模型"
+        
+        selected_review_model = st.selectbox(
+            "评审模型",
+            review_options,
+            index=review_options.index(current_review_selection),
+            help="选择用于脚本评审的模型",
+            key="review_model_select_main"
+        )
+        
+        # 保存到 session_state
+        if selected_review_model == "使用生成模型":
+            st.session_state.review_api_manager = None
+            st.session_state.selected_review_config = "使用生成模型"
+            st.info("评审将使用与生成相同的模型")
+        else:
+            # 创建评审专用的 API 管理器
+            try:
+                review_api_manager = APIManager()
+                review_api_manager.switch_config(selected_review_model)
+                st.session_state.review_api_manager = review_api_manager
+                st.session_state.selected_review_config = selected_review_model
+                
+                # 显示当前配置
+                rev_config = review_api_manager.load_config()
+                if rev_config:
+                    st.success(f"评审模型: {rev_config.model_id}")
+            except Exception as e:
+                display_warning(f"评审模型配置加载失败: {str(e)}")
+                st.session_state.review_api_manager = None
+                st.session_state.selected_review_config = "使用生成模型"
 
 
 def render_api_settings():
@@ -384,11 +680,13 @@ def render_api_settings():
                     config_info += f"\nEmbedding: {current_config.embedding_model}"
                 st.info(config_info)
             
+            st.markdown("---")
+            
             # 删除配置按钮
             if len(all_configs) > 1:  # 至少保留一个配置
                 col1, col2 = st.columns([3, 1])
                 with col2:
-                    if st.button("删除", key="delete_config"):
+                    if st.button("删除", key="delete_config", type="secondary"):
                         try:
                             success, msg = api_manager.delete_config(selected_config_name)
                             if success:
@@ -652,7 +950,7 @@ def render_prompt_management():
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            if st.button("保存", use_container_width=True, key=f"save_prompt_{selected_type}"):
+            if st.button("保存", use_container_width=True, key=f"save_prompt_{selected_type}", type="primary"):
                 if edited_prompt.strip():
                     success, msg = api_manager.save_prompt(selected_type, edited_prompt)
                     if success:
@@ -664,7 +962,7 @@ def render_prompt_management():
                     display_error("提示词内容不能为空")
         
         with col2:
-            if st.button("重置", use_container_width=True, key=f"reset_prompt_{selected_type}"):
+            if st.button("重置", use_container_width=True, key=f"reset_prompt_{selected_type}", type="secondary"):
                 success, msg = api_manager.reset_prompt(selected_type)
                 if success:
                     display_success("已重置为默认提示词")
@@ -673,7 +971,7 @@ def render_prompt_management():
                     display_error(f"重置失败: {msg}")
         
         with col3:
-            if st.button("复制默认", use_container_width=True, key=f"copy_default_{selected_type}"):
+            if st.button("复制默认", use_container_width=True, key=f"copy_default_{selected_type}", type="secondary"):
                 st.session_state[f"prompt_editor_{selected_type}"] = default_prompt
                 st.rerun()
 
@@ -742,12 +1040,12 @@ def render_project_management():
                             project = None
                         
                         if project:
-                            if st.button("加载项目", use_container_width=True):
+                            if st.button("加载项目", use_container_width=True, type="primary"):
                                 st.session_state.current_project = project
                                 display_success(f"已加载项目: {selected_client}/{selected_project}")
                                 st.rerun()
                             
-                            if st.button("删除项目", use_container_width=True):
+                            if st.button("删除项目", use_container_width=True, type="secondary"):
                                 try:
                                     if project_manager.delete_project(selected_client, selected_project):
                                         if (st.session_state.current_project and 
@@ -813,7 +1111,7 @@ def render_knowledge_base_management():
         
         # 导出知识库
         st.markdown("#### 导出知识库")
-        if st.button("导出为 ZIP", use_container_width=True):
+        if st.button("导出为 ZIP", use_container_width=True, type="secondary"):
             with st.spinner("正在导出..."):
                 try:
                     export_path = "./data/knowledge_base_export"
@@ -849,7 +1147,7 @@ def render_knowledge_base_management():
         )
         
         if uploaded_file:
-            if st.button("导入知识库", use_container_width=True):
+            if st.button("导入知识库", use_container_width=True, type="primary"):
                 with st.spinner("正在导入..."):
                     try:
                         # 保存上传的文件
@@ -900,7 +1198,15 @@ def render_main_content():
 
 
 def render_script_generation_tab():
-    """渲染脚本生成标签页"""
+    """
+    渲染脚本生成标签页
+    
+    使用卡片布局组织输入区域：
+    - 项目信息卡片：项目名称、客户名称、品类
+    - 脚本参数卡片：游戏介绍、USP、目标人群（3:1 列比例）
+    
+    Requirements: 1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 2.4, 2.5
+    """
     st.markdown("### 脚本生成")
     
     # 检查系统健康状态
@@ -917,6 +1223,10 @@ def render_script_generation_tab():
         display_warning(error_msg)
         return
     
+    # ==================== 页面头部 ====================
+    # Requirements: 1.1, 1.2, 1.3, 1.4
+    render_page_header()
+    
     # 获取品类列表
     try:
         categories = st.session_state.rag_system.get_categories()
@@ -926,55 +1236,107 @@ def render_script_generation_tab():
     default_category = st.session_state.current_project.category if st.session_state.current_project else ""
     default_idx = categories.index(default_category) if default_category in categories else 0
     
-    # 第一行：项目名称、品类选择
-    # Requirements: 5.1, 5.2
-    row1_col1, row1_col2, row1_col3 = st.columns([2, 1, 1])
-    with row1_col1:
+    # ==================== 项目信息卡片 ====================
+    # Requirements: 2.1, 2.2
+    st.markdown('<div class="ui-card">', unsafe_allow_html=True)
+    st.markdown('<div class="ui-card-header">项目信息</div>', unsafe_allow_html=True)
+    
+    # 项目名称、客户名称、品类 (3列)
+    proj_col1, proj_col2, proj_col3 = st.columns([2, 2, 1])
+    with proj_col1:
         project_name = st.text_input(
-            "项目名称",
+            "项目/游戏名称",
             value=st.session_state.current_project.project_name if st.session_state.current_project else "",
-            placeholder="请输入项目名称...",
+            placeholder="请输入项目或游戏名称...",
             help="当前项目或游戏名称"
         )
-    with row1_col2:
+    with proj_col2:
+        client_name = st.text_input(
+            "客户名称",
+            value=st.session_state.current_project.client_name if st.session_state.current_project else "",
+            placeholder="请输入客户名称...",
+            help="客户或公司名称，用于项目归档"
+        )
+    with proj_col3:
         category = st.selectbox(
             "游戏品类",
             categories,
             index=default_idx,
             help="选择游戏所属品类，用于检索同品类参考脚本"
         )
-    with row1_col3:
-        # 预留空间或其他快捷选项
-        st.markdown("")  # 占位
     
-    # 第二行：核心输入区域
-    # Requirements: 5.3, 5.4
-    row2_col1, row2_col2 = st.columns(2)
+    st.markdown('</div>', unsafe_allow_html=True)
     
-    with row2_col1:
+    # ==================== 脚本参数卡片 ====================
+    # Requirements: 2.3, 2.4
+    st.markdown('<div class="ui-card">', unsafe_allow_html=True)
+    st.markdown('<div class="ui-card-header">脚本参数</div>', unsafe_allow_html=True)
+    
+    # 使用 3:1 列比例布局游戏介绍和其他输入
+    param_col1, param_col2 = st.columns([3, 1])
+    
+    with param_col1:
         game_intro = st.text_area(
             "游戏介绍",
-            height=120,
+            height=150,
             placeholder="请输入游戏的基本介绍，包括游戏类型、玩法特点等...",
             value=st.session_state.current_project.game_intro if st.session_state.current_project else "",
             help="详细描述游戏的核心玩法和特色"
         )
+    
+    with param_col2:
         usp = st.text_area(
             "独特卖点 (USP)",
-            height=80,
-            placeholder="请输入游戏的独特卖点，如创新玩法、独特美术风格等...",
+            height=70,
+            placeholder="请输入游戏的独特卖点...",
             value=st.session_state.current_project.usp if st.session_state.current_project else "",
             help="游戏区别于竞品的核心优势"
         )
-    
-    with row2_col2:
         target_audience = st.text_area(
             "目标人群",
-            height=80,
-            placeholder="请描述目标用户群体，如年龄、性别、游戏偏好等...",
+            height=70,
+            placeholder="请描述目标用户群体...",
             value=st.session_state.current_project.target_audience if st.session_state.current_project else "",
             help="广告投放的目标受众特征"
         )
+    
+    # 评审模型选择（放在脚本参数卡片内）
+    try:
+        all_configs = api_manager.get_all_configs()
+        config_names = [config.name for config in all_configs]
+        review_options = ["使用生成模型"] + config_names
+        
+        current_review_selection = st.session_state.get("selected_review_config", "使用生成模型")
+        if current_review_selection not in review_options:
+            current_review_selection = "使用生成模型"
+        
+        review_col1, review_col2, review_col3 = st.columns([2, 1, 1])
+        with review_col3:
+            selected_review_model = st.selectbox(
+                "评审模型",
+                review_options,
+                index=review_options.index(current_review_selection),
+                help="选择评审模型，可与生成模型不同",
+                key="review_model_main"
+            )
+        
+        # 保存到 session_state
+        if selected_review_model == "使用生成模型":
+            st.session_state.review_api_manager = None
+            st.session_state.selected_review_config = "使用生成模型"
+        else:
+            try:
+                review_api_manager = APIManager()
+                review_api_manager.switch_config(selected_review_model)
+                st.session_state.review_api_manager = review_api_manager
+                st.session_state.selected_review_config = selected_review_model
+            except Exception:
+                st.session_state.review_api_manager = None
+                st.session_state.selected_review_config = "使用生成模型"
+    except Exception:
+        st.caption("请先配置 API")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
     
     # 生成按钮
     col1, col2, col3 = st.columns([1, 1, 1])
@@ -989,17 +1351,41 @@ def render_script_generation_tab():
             display_error(error_msg)
             return
         
-        # 更新当前项目信息
-        if st.session_state.current_project:
-            try:
-                project = st.session_state.current_project
-                project.game_intro = game_intro
-                project.usp = usp
-                project.target_audience = target_audience
-                project.category = category
-                st.session_state.project_manager.update_project(project)
-            except Exception as e:
-                display_warning(f"更新项目信息失败: {str(e)}")
+        # 验证项目名称和客户名称
+        if not project_name or not project_name.strip():
+            display_error("请输入项目/游戏名称")
+            return
+        if not client_name or not client_name.strip():
+            display_error("请输入客户名称")
+            return
+        
+        # 自动保存/更新项目信息到历史记录
+        try:
+            project_manager = st.session_state.project_manager
+            
+            # 检查项目是否已存在
+            existing_project = project_manager.get_project(client_name.strip(), project_name.strip())
+            
+            if existing_project:
+                # 更新现有项目
+                existing_project.game_intro = game_intro
+                existing_project.usp = usp
+                existing_project.target_audience = target_audience
+                existing_project.category = category
+                project_manager.update_project(existing_project)
+                st.session_state.current_project = existing_project
+            else:
+                # 创建新项目
+                new_project = project_manager.create_project(client_name.strip(), project_name.strip())
+                new_project.game_intro = game_intro
+                new_project.usp = usp
+                new_project.target_audience = target_audience
+                new_project.category = category
+                project_manager.update_project(new_project)
+                st.session_state.current_project = new_project
+                display_success(f"项目 '{client_name}/{project_name}' 已自动保存")
+        except Exception as e:
+            display_warning(f"保存项目信息失败: {str(e)}")
         
         # 创建生成输入
         input_data = GenerationInput(
@@ -1010,10 +1396,12 @@ def render_script_generation_tab():
         )
         
         # 创建生成器
+        # Requirements: 5.4, 5.6
         try:
             generator = ScriptGenerator(
                 api_manager=api_manager,
-                rag_system=st.session_state.rag_system
+                rag_system=st.session_state.rag_system,
+                review_api_manager=st.session_state.get("review_api_manager")
             )
         except Exception as e:
             display_error("初始化脚本生成器失败", str(e))
@@ -1059,16 +1447,24 @@ def render_script_generation_tab():
                 status.update(label="生成失败", state="error", expanded=True)
                 display_error("脚本生成失败", str(e))
     
-    # 显示生成结果
+    # ==================== 结果展示区域 ====================
+    # Requirements: 3.1, 3.2, 3.3, 3.4
     if st.session_state.generation_output:
         st.markdown("---")
-        st.markdown("### 生成结果")
         
         output = st.session_state.generation_output
         
+        # 使用卡片包裹结果表格
+        st.markdown('<div class="ui-card">', unsafe_allow_html=True)
+        st.markdown('<div class="ui-card-header">生成结果</div>', unsafe_allow_html=True)
+        
         if output.is_valid():
+            # 结果摘要（分镜数量）
+            # Requirements: 3.2
+            storyboard_count = len(output.storyboard)
+            st.markdown(f"已生成 **{storyboard_count}** 个分镜")
+            
             # 构建 DataFrame 用于 st.data_editor
-            # Requirements: 7.1, 7.2, 7.3, 7.4
             max_len = max(
                 len(output.storyboard),
                 len(output.voiceover),
@@ -1099,11 +1495,25 @@ def render_script_generation_tab():
                 key="script_editor"
             )
             
-            # 入库按钮 - 右对齐
-            # Requirements: 7.5
-            btn_col1, btn_col2, btn_col3 = st.columns([3, 1, 1])
+            # 操作按钮 - 右对齐
+            # Requirements: 3.3
+            btn_col1, btn_col2, btn_col3 = st.columns([2, 1, 1])
+            with btn_col2:
+                if st.button("导出", use_container_width=True, type="secondary"):
+                    # 导出为 CSV
+                    try:
+                        csv_data = edited_df.to_csv(index=False).encode('utf-8-sig')
+                        st.download_button(
+                            label="下载 CSV",
+                            data=csv_data,
+                            file_name="script_output.csv",
+                            mime="text/csv",
+                            use_container_width=True
+                        )
+                    except Exception as e:
+                        display_error("导出失败", str(e))
             with btn_col3:
-                if st.button("入库", use_container_width=False):
+                if st.button("入库", use_container_width=True, type="primary"):
                     try:
                         # 确定品类
                         archive_category = category if 'category' in dir() else (
@@ -1153,15 +1563,22 @@ def render_script_generation_tab():
             st.markdown("**原始输出:**")
             st.text(output.raw_content)
             display_warning("脚本格式解析失败，显示原始内容。您可以手动复制并编辑。")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
 def render_knowledge_base_tab():
     """
     渲染知识库标签页
     
-    优化布局，移除 Emoji，保持纯文字专业风格。
+    优化布局：
+    - 统计卡片区域（脚本总数、品类数量）
+    - 筛选栏固定在列表上方
+    - 脚本列表使用卡片样式
+    - 每个脚本卡片显示品类徽章、游戏名称、入库时间
+    - 支持展开/收起查看详情
     
-    Requirements: 3.1, 3.2, 3.3
+    Requirements: 4.1, 4.2, 4.3, 4.4, 4.5
     """
     st.markdown("### 知识库浏览")
     
@@ -1177,63 +1594,57 @@ def render_knowledge_base_tab():
         display_error("获取品类列表失败", str(e))
         categories = []
     
-    # 顶部筛选和统计区域
-    filter_col1, filter_col2, filter_col3 = st.columns([2, 1, 1])
+    # 获取所有脚本用于统计
+    try:
+        all_scripts = []
+        for cat in categories:
+            all_scripts.extend(rag_system.get_scripts_by_category(cat))
+        total_script_count = len(all_scripts)
+    except Exception as e:
+        display_error("获取脚本统计失败", str(e))
+        total_script_count = 0
     
-    with filter_col1:
-        selected_category = st.selectbox("选择品类", ["全部"] + categories, key="kb_category_filter")
+    # ==================== 统计卡片区域 ====================
+    # Requirements: 4.1
+    stat_col1, stat_col2, stat_col3 = st.columns([1, 1, 2])
     
-    # 获取脚本列表
+    with stat_col1:
+        st.markdown('<div class="ui-card">', unsafe_allow_html=True)
+        st.metric("脚本总数", total_script_count)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with stat_col2:
+        st.markdown('<div class="ui-card">', unsafe_allow_html=True)
+        st.metric("品类数量", len(categories))
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # ==================== 筛选栏 ====================
+    # Requirements: 4.2
+    with stat_col3:
+        selected_category = st.selectbox(
+            "筛选品类", 
+            ["全部"] + categories, 
+            key="kb_category_filter",
+            help="选择品类筛选脚本列表"
+        )
+    
+    st.markdown("---")
+    
+    # 获取筛选后的脚本列表
     try:
         if selected_category == "全部":
-            scripts = []
-            for cat in categories:
-                scripts.extend(rag_system.get_scripts_by_category(cat))
+            scripts = all_scripts
         else:
             scripts = rag_system.get_scripts_by_category(selected_category)
     except Exception as e:
         display_error("获取脚本列表失败", str(e))
         scripts = []
     
-    with filter_col2:
-        st.metric("脚本总数", len(scripts))
-    
-    with filter_col3:
-        st.metric("品类数量", len(categories))
-    
-    st.markdown("---")
-    
-    # 显示脚本列表
+    # ==================== 脚本卡片列表 ====================
+    # Requirements: 4.3, 4.4, 4.5
     if scripts:
         for i, script in enumerate(scripts):
-            # 使用纯文字标题，无 Emoji
-            game_name = script.metadata.game_name or "未命名"
-            expander_title = f"{script.category} - {game_name} (脚本 {i+1})"
-            
-            with st.expander(expander_title):
-                # 使用多列布局展示元数据
-                meta_col1, meta_col2, meta_col3 = st.columns(3)
-                with meta_col1:
-                    st.markdown(f"**品类:** {script.category}")
-                with meta_col2:
-                    st.markdown(f"**来源:** {script.metadata.source}")
-                with meta_col3:
-                    st.markdown(f"**入库时间:** {script.metadata.archived_at}")
-                
-                st.markdown("---")
-                st.markdown("**内容预览:**")
-                st.text(script.content[:500] + "..." if len(script.content) > 500 else script.content)
-                
-                # 删除按钮
-                if st.button("删除", key=f"delete_script_{script.id}"):
-                    try:
-                        if rag_system.delete_script(script.id):
-                            display_success("脚本已删除")
-                            st.rerun()
-                        else:
-                            display_error("删除失败，脚本可能不存在")
-                    except Exception as e:
-                        display_error("删除脚本时发生错误", str(e))
+            render_script_card(script, i, rag_system)
     else:
         display_info("暂无脚本数据")
     
@@ -1244,7 +1655,7 @@ def render_knowledge_base_tab():
     col1, col2 = st.columns(2)
     
     with col1:
-        if st.button("导出知识库", use_container_width=True):
+        if st.button("导出知识库", use_container_width=True, type="secondary"):
             with st.spinner("正在导出..."):
                 try:
                     export_path = "./data/knowledge_base_export"
@@ -1266,7 +1677,7 @@ def render_knowledge_base_tab():
     with col2:
         uploaded = st.file_uploader("导入知识库", type=["zip"], key="kb_tab_import", label_visibility="collapsed")
         if uploaded:
-            if st.button("确认导入", use_container_width=True):
+            if st.button("确认导入", use_container_width=True, type="primary"):
                 with st.spinner("正在导入..."):
                     try:
                         import_path = Path("./data/_temp_import.zip")
@@ -1288,13 +1699,81 @@ def render_knowledge_base_tab():
                         display_error("导入失败", str(e))
 
 
+def render_script_card(script, index: int, rag_system):
+    """
+    渲染单个脚本卡片
+    
+    使用卡片容器展示脚本信息，包括：
+    - 品类徽章
+    - 游戏名称
+    - 入库时间
+    - 展开/收起查看详情
+    
+    Args:
+        script: 脚本对象
+        index: 脚本索引
+        rag_system: RAG 系统实例
+    
+    Requirements: 4.3, 4.4, 4.5
+    """
+    # 卡片容器开始
+    st.markdown('<div class="ui-card">', unsafe_allow_html=True)
+    
+    # 卡片头部 - 游戏名称和品类徽章
+    header_col1, header_col2 = st.columns([3, 1])
+    
+    with header_col1:
+        game_name = script.metadata.game_name or "未命名"
+        st.markdown(f'<span class="ui-h3">{game_name}</span>', unsafe_allow_html=True)
+    
+    with header_col2:
+        # 品类徽章
+        badge_html = render_badge(script.category, "primary")
+        st.markdown(badge_html, unsafe_allow_html=True)
+    
+    # 入库时间 - 次要信息
+    archived_at = script.metadata.archived_at or "未知"
+    st.markdown(
+        f'<span class="ui-text-secondary">入库时间: {archived_at}</span>', 
+        unsafe_allow_html=True
+    )
+    
+    # 展开/收起查看详情
+    with st.expander("查看详情"):
+        # 来源信息
+        st.markdown(f"**来源:** {script.metadata.source}")
+        
+        st.markdown("---")
+        st.markdown("**内容预览:**")
+        content_preview = script.content[:500] + "..." if len(script.content) > 500 else script.content
+        st.text(content_preview)
+        
+        # 删除按钮 - 右对齐
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col3:
+            if st.button("删除", key=f"delete_script_{script.id}", type="secondary"):
+                try:
+                    if rag_system.delete_script(script.id):
+                        display_success("脚本已删除")
+                        st.rerun()
+                    else:
+                        display_error("删除失败，脚本可能不存在")
+                except Exception as e:
+                    display_error("删除脚本时发生错误", str(e))
+    
+    # 卡片容器结束
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
 def render_project_history_tab():
     """
     渲染项目历史标签页
     
-    优化布局，移除 Emoji，保持纯文字专业风格。
+    使用左右分栏布局：
+    - 左侧 1/3 宽度显示项目树形列表（按客户分组）
+    - 右侧 2/3 宽度显示项目详情和历史脚本时间线
     
-    Requirements: 3.1, 3.2, 3.3
+    Requirements: 5.1, 5.2, 5.3, 5.4, 5.5
     """
     st.markdown("### 项目历史")
     
@@ -1304,7 +1783,11 @@ def render_project_history_tab():
         display_error("项目管理器未初始化")
         return
     
-    # 项目选择
+    # 初始化 session state 用于存储选中的项目
+    if "selected_history_project" not in st.session_state:
+        st.session_state.selected_history_project = None
+    
+    # 获取客户列表
     try:
         clients = project_manager.list_clients()
     except Exception as e:
@@ -1315,130 +1798,275 @@ def render_project_history_tab():
         display_info("暂无项目，请先在设置中创建项目")
         return
     
-    # 项目筛选区域
-    col1, col2 = st.columns(2)
+    # 左右分栏布局：1/3 项目列表，2/3 项目详情
+    left_col, right_col = st.columns([1, 2])
     
-    with col1:
-        selected_client = st.selectbox("选择客户", clients, key="history_client")
+    # 左侧：项目树形列表
+    with left_col:
+        render_project_tree(project_manager, clients)
     
-    with col2:
-        if selected_client:
-            try:
-                projects = project_manager.get_projects_by_client(selected_client)
-                project_names = [p.project_name for p in projects]
-            except Exception as e:
-                display_error("获取项目列表失败", str(e))
-                project_names = []
-            
-            selected_project = st.selectbox("选择项目", project_names, key="history_project") if project_names else None
-        else:
-            selected_project = None
+    # 右侧：项目详情
+    with right_col:
+        render_project_detail_area(project_manager)
+
+
+def render_project_tree(project_manager, clients: list):
+    """
+    渲染项目树形列表
     
-    if selected_client and selected_project:
-        try:
-            project = project_manager.get_project(selected_client, selected_project)
-        except Exception as e:
-            display_error("加载项目失败", str(e))
-            project = None
+    按客户分组显示项目，使用 expander 展开客户下的项目，
+    高亮当前选中的项目。
+    
+    Args:
+        project_manager: 项目管理器实例
+        clients: 客户列表
         
-        if project:
-            st.markdown("---")
-            
-            # 项目信息卡片
-            st.markdown("#### 项目信息")
-            
-            info_col1, info_col2, info_col3, info_col4 = st.columns(4)
-            with info_col1:
-                st.markdown(f"**客户:** {project.client_name}")
-            with info_col2:
-                st.markdown(f"**项目:** {project.project_name}")
-            with info_col3:
-                st.markdown(f"**品类:** {project.category or '未设置'}")
-            with info_col4:
-                script_count = len(project.scripts_history) if project.scripts_history else 0
-                st.markdown(f"**脚本数:** {script_count}")
-            
-            # 时间信息
-            time_col1, time_col2 = st.columns(2)
-            with time_col1:
-                st.caption(f"创建时间: {project.created_at[:10]}")
-            with time_col2:
-                st.caption(f"更新时间: {project.updated_at[:10]}")
-            
-            # 历史脚本列表
-            st.markdown("---")
-            st.markdown("#### 历史脚本")
-            
-            if project.scripts_history:
-                for record in reversed(project.scripts_history):
-                    # 使用纯文字标题，无 Emoji
-                    expander_title = f"版本 {record.version} - {record.created_at[:10]}"
-                    if record.is_archived:
-                        expander_title += " (已入库)"
-                    
-                    with st.expander(expander_title):
-                        # 元数据展示
-                        meta_col1, meta_col2 = st.columns(2)
-                        with meta_col1:
-                            st.markdown(f"**创建时间:** {record.created_at}")
-                        with meta_col2:
-                            st.markdown(f"**入库状态:** {'已入库' if record.is_archived else '未入库'}")
-                        
-                        st.markdown("---")
-                        
-                        # 如果有解析后的输出，显示表格
-                        if record.parsed_output:
-                            try:
-                                from src.script_generator import ScriptOutput
-                                output = ScriptOutput(
-                                    storyboard=record.parsed_output.get("storyboard", []),
-                                    voiceover=record.parsed_output.get("voiceover", []),
-                                    design_intent=record.parsed_output.get("design_intent", []),
-                                    raw_content=record.content
-                                )
-                                if output.is_valid():
-                                    st.markdown(output.to_markdown_table())
-                                else:
-                                    st.markdown("**脚本内容:**")
-                                    st.text(record.content)
-                            except Exception:
-                                st.markdown("**脚本内容:**")
-                                st.text(record.content)
-                        else:
-                            st.markdown("**脚本内容:**")
-                            st.text(record.content)
-            else:
-                display_info("暂无历史脚本")
+    Requirements: 5.2, 5.5
+    """
+    st.markdown("#### 项目列表")
+    
+    for client in clients:
+        try:
+            projects = project_manager.get_projects_by_client(client)
+        except Exception as e:
+            display_error(f"获取 {client} 的项目列表失败", str(e))
+            continue
+        
+        if not projects:
+            continue
+        
+        # 使用 expander 展开客户下的项目
+        with st.expander(f"{client} ({len(projects)})", expanded=True):
+            for project in projects:
+                project_key = f"{client}/{project.project_name}"
+                is_selected = st.session_state.get("selected_history_project") == project_key
+                
+                # 高亮当前选中项目
+                if is_selected:
+                    # 使用 primary 按钮样式表示选中
+                    if st.button(
+                        f"● {project.project_name}",
+                        key=f"proj_{project_key}",
+                        use_container_width=True,
+                        type="primary"
+                    ):
+                        st.session_state.selected_history_project = project_key
+                        st.rerun()
+                else:
+                    # 使用默认按钮样式
+                    if st.button(
+                        project.project_name,
+                        key=f"proj_{project_key}",
+                        use_container_width=True
+                    ):
+                        st.session_state.selected_history_project = project_key
+                        st.rerun()
+
+
+def render_project_detail_area(project_manager):
+    """
+    渲染项目详情区域
+    
+    显示选中项目的信息卡片和历史脚本时间线。
+    
+    Args:
+        project_manager: 项目管理器实例
+        
+    Requirements: 5.3, 5.4
+    """
+    selected = st.session_state.get("selected_history_project")
+    
+    if not selected:
+        st.info("请从左侧选择项目查看详情")
+        return
+    
+    # 解析选中的项目
+    try:
+        client, project_name = selected.split("/", 1)
+        project = project_manager.get_project(client, project_name)
+    except Exception as e:
+        display_error("加载项目失败", str(e))
+        return
+    
+    if not project:
+        st.warning("项目不存在或已被删除")
+        st.session_state.selected_history_project = None
+        return
+    
+    # 项目信息卡片
+    render_project_info_card(project)
+    
+    # 历史脚本时间线
+    render_scripts_timeline(project)
+
+
+def render_project_info_card(project):
+    """
+    渲染项目信息卡片
+    
+    Args:
+        project: 项目对象
+        
+    Requirements: 5.3
+    """
+    st.markdown('<div class="ui-card">', unsafe_allow_html=True)
+    st.markdown(f'<div class="ui-card-header">{project.project_name}</div>', unsafe_allow_html=True)
+    
+    # 项目基本信息
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown(f"**客户:** {project.client_name}")
+        category_badge = render_badge(project.category or "未设置", "primary")
+        st.markdown(f"**品类:** {category_badge}", unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"**创建时间:** {project.created_at[:10]}")
+        script_count = len(project.scripts_history) if project.scripts_history else 0
+        st.markdown(f"**脚本数:** {script_count}")
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+def render_scripts_timeline(project):
+    """
+    渲染历史脚本时间线
+    
+    使用时间线样式展示历史脚本，支持展开查看详情。
+    
+    Args:
+        project: 项目对象
+        
+    Requirements: 5.4
+    """
+    st.markdown("#### 历史脚本")
+    
+    if not project.scripts_history:
+        display_info("暂无历史脚本")
+        return
+    
+    # 使用时间线样式
+    st.markdown('<div class="ui-timeline">', unsafe_allow_html=True)
+    
+    for record in reversed(project.scripts_history):
+        render_timeline_item(record)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+def render_timeline_item(record):
+    """
+    渲染时间线项
+    
+    Args:
+        record: 脚本记录对象
+        
+    Requirements: 5.4
+    """
+    st.markdown('<div class="ui-timeline-item">', unsafe_allow_html=True)
+    
+    # 时间和状态徽章
+    status_badge = render_badge("已入库", "success") if record.is_archived else render_badge("未入库", "secondary")
+    st.markdown(
+        f"**版本 {record.version}** · {record.created_at[:10]} {status_badge}",
+        unsafe_allow_html=True
+    )
+    
+    # 内容预览（使用 expander）
+    with st.expander("查看内容"):
+        # 元数据展示
+        meta_col1, meta_col2 = st.columns(2)
+        with meta_col1:
+            st.markdown(f"**创建时间:** {record.created_at}")
+        with meta_col2:
+            # 使用徽章显示入库状态
+            detail_status_badge = render_badge("已入库", "success") if record.is_archived else render_badge("未入库", "secondary")
+            st.markdown(f"**入库状态:** {detail_status_badge}", unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # 如果有解析后的输出，显示表格
+        if record.parsed_output:
+            try:
+                from src.script_generator import ScriptOutput
+                output = ScriptOutput(
+                    storyboard=record.parsed_output.get("storyboard", []),
+                    voiceover=record.parsed_output.get("voiceover", []),
+                    design_intent=record.parsed_output.get("design_intent", []),
+                    raw_content=record.content
+                )
+                if output.is_valid():
+                    st.markdown(output.to_markdown_table())
+                else:
+                    st.markdown("**脚本内容:**")
+                    st.text(record.content)
+            except Exception:
+                st.markdown("**脚本内容:**")
+                st.text(record.content)
+        else:
+            st.markdown("**脚本内容:**")
+            # 显示内容预览
+            content_preview = record.content[:300] + "..." if len(record.content) > 300 else record.content
+            st.text(content_preview)
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ==================== 设置页面 ====================
 def render_settings_page():
     """
-    渲染设置页面
+    渲染设置页面 - 垂直 Tabs 布局
     
-    整合 API 配置和提示词管理功能，使用 st.tabs 组织。
+    使用左右分栏模拟垂直 tabs，左侧为设置菜单，右侧为设置内容区域。
+    整合 API 配置和提示词管理功能。
     
-    Requirements: 8.1, 8.2, 8.3, 8.4
+    Requirements: 6.1, 6.2, 6.3, 6.4, 8.1, 8.2, 8.3, 8.4
     """
     st.markdown("## 设置")
     
-    # 使用 tabs 组织设置项
-    tab1, tab2 = st.tabs(["API 配置", "提示词管理"])
+    # 初始化设置页面的 session state
+    if "selected_setting" not in st.session_state:
+        st.session_state.selected_setting = "API 配置"
     
-    with tab1:
-        render_api_settings_content()
+    # 使用左右分栏模拟垂直 tabs
+    # Requirements: 6.1
+    left_col, right_col = st.columns([1, 3])
     
-    with tab2:
-        render_prompt_management_content()
+    with left_col:
+        # 左侧设置菜单卡片
+        st.markdown('<div class="ui-card">', unsafe_allow_html=True)
+        st.markdown('<div class="ui-card-header">设置菜单</div>', unsafe_allow_html=True)
+        
+        # 设置菜单选项（使用 radio 模拟垂直 tabs）
+        settings_options = ["API 配置", "提示词管理"]
+        selected_setting = st.radio(
+            "设置项",
+            settings_options,
+            index=settings_options.index(st.session_state.selected_setting) if st.session_state.selected_setting in settings_options else 0,
+            label_visibility="collapsed",
+            key="settings_menu_radio"
+        )
+        
+        # 更新 session state
+        if selected_setting != st.session_state.selected_setting:
+            st.session_state.selected_setting = selected_setting
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with right_col:
+        # 右侧设置内容区域
+        if st.session_state.selected_setting == "API 配置":
+            render_api_settings_card()
+        elif st.session_state.selected_setting == "提示词管理":
+            render_prompt_settings_card()
 
 
-def render_api_settings_content():
+def render_api_settings_card():
     """
-    渲染 API 配置内容（设置页面版本）
+    渲染 API 配置卡片（设置页面版本）
     
-    将原侧边栏的 API 设置功能移至设置页面主区域。
+    使用卡片包裹配置区域，配置列表使用表格展示，
+    新增/编辑表单放在列表下方。
     
-    Requirements: 8.2, 8.4
+    Requirements: 6.2, 6.3, 6.4, 8.2, 8.4
     """
     api_manager = st.session_state.api_manager
     
@@ -1456,31 +2084,74 @@ def render_api_settings_content():
         current_config = None
         active_config_name = "default"
     
-    # 配置选择区域
-    st.markdown("### 选择配置")
+    # API 配置卡片
+    # Requirements: 6.2
+    st.markdown('<div class="ui-card">', unsafe_allow_html=True)
+    st.markdown('<div class="ui-card-header">API 配置</div>', unsafe_allow_html=True)
     
+    # 配置列表表格
+    # Requirements: 6.3
     if all_configs:
+        st.markdown("#### 已有配置")
+        
+        # 构建配置数据表格
+        config_data = []
+        for config in all_configs:
+            status = "✓ 当前" if config.name == active_config_name else ""
+            embedding_info = config.embedding_model if config.has_embedding_config() else "未配置"
+            config_data.append({
+                "配置名称": config.name,
+                "模型": config.model_id,
+                "Embedding": embedding_info,
+                "状态": status
+            })
+        
+        # 使用 dataframe 展示配置列表
+        import pandas as pd
+        df = pd.DataFrame(config_data)
+        st.dataframe(df, use_container_width=True, hide_index=True)
+        
+        # 配置选择和操作
+        col1, col2, col3 = st.columns([2, 1, 1])
+        
         config_names = [config.name for config in all_configs]
         
         # 确保当前活动配置在列表中
         if active_config_name not in config_names and config_names:
             active_config_name = config_names[0]
         
-        col1, col2 = st.columns([3, 1])
-        
         with col1:
             selected_config_name = st.selectbox(
-                "当前使用的配置",
+                "选择配置",
                 config_names,
                 index=config_names.index(active_config_name) if active_config_name in config_names else 0,
-                help="选择要使用的 API 配置",
+                help="选择要使用或编辑的 API 配置",
                 key="settings_config_select"
             )
         
         with col2:
+            # 切换配置按钮
+            if st.button("切换到此配置", key="settings_switch_config", use_container_width=True, type="primary"):
+                if selected_config_name != active_config_name:
+                    try:
+                        success, msg = api_manager.switch_config(selected_config_name)
+                        if success:
+                            # 更新 RAG 系统的 API 管理器
+                            if st.session_state.rag_system:
+                                st.session_state.rag_system.update_api_manager(api_manager)
+                            display_success(f"已切换到配置: {selected_config_name}")
+                            st.rerun()
+                        else:
+                            display_error(f"切换失败: {msg}")
+                    except Exception as e:
+                        display_error("切换配置时发生错误", str(e))
+                else:
+                    display_info("当前已是此配置")
+        
+        with col3:
             # 删除配置按钮
             if len(all_configs) > 1:  # 至少保留一个配置
-                if st.button("删除配置", key="settings_delete_config", use_container_width=True):
+                if st.button("删除配置", key="settings_delete_config", use_container_width=True, type="secondary"):
                     try:
                         success, msg = api_manager.delete_config(selected_config_name)
                         if success:
@@ -1490,33 +2161,15 @@ def render_api_settings_content():
                             display_error(f"删除失败: {msg}")
                     except Exception as e:
                         display_error("删除配置时发生错误", str(e))
-        
-        # 切换配置
-        if selected_config_name != active_config_name:
-            try:
-                success, msg = api_manager.switch_config(selected_config_name)
-                if success:
-                    # 更新 RAG 系统的 API 管理器
-                    if st.session_state.rag_system:
-                        st.session_state.rag_system.update_api_manager(api_manager)
-                    display_success(f"已切换到配置: {selected_config_name}")
-                    st.rerun()
-                else:
-                    display_error(f"切换失败: {msg}")
-            except Exception as e:
-                display_error("切换配置时发生错误", str(e))
-        
-        # 显示当前配置信息
-        if current_config:
-            config_info = f"当前配置: {current_config.name} ({current_config.model_id})"
-            if current_config.has_embedding_config():
-                config_info += f" | Embedding: {current_config.embedding_model}"
-            st.info(config_info)
     else:
         display_warning("未配置 API，请添加配置")
     
-    st.markdown("---")
-    st.markdown("### 添加/编辑配置")
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    # 新增/编辑配置表单卡片
+    # Requirements: 6.4
+    st.markdown('<div class="ui-card">', unsafe_allow_html=True)
+    st.markdown('<div class="ui-card-header">添加/编辑配置</div>', unsafe_allow_html=True)
     
     # 配置表单
     with st.form("settings_api_config_form"):
@@ -1641,11 +2294,12 @@ def render_api_settings_content():
                 help="如果 Embedding 提供商与 LLM 不同，请填写对应的 API Key。留空则使用上方的 API Key"
             )
         
-        col1, col2 = st.columns(2)
-        with col1:
-            save_btn = st.form_submit_button("保存配置", use_container_width=True)
+        # 操作按钮 - 右对齐
+        col1, col2, col3 = st.columns([2, 1, 1])
         with col2:
             test_btn = st.form_submit_button("测试连接", use_container_width=True)
+        with col3:
+            save_btn = st.form_submit_button("保存配置", use_container_width=True)
     
     if save_btn:
         # 验证输入
@@ -1712,15 +2366,17 @@ def render_api_settings_content():
                         display_error(msg)
                 except Exception as e:
                     display_error("测试连接时发生错误", str(e))
+    
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
-def render_prompt_management_content():
+def render_prompt_settings_card():
     """
-    渲染提示词管理内容（设置页面版本）
+    渲染提示词管理卡片（设置页面版本）
     
-    将原侧边栏的提示词管理功能移至设置页面主区域。
+    使用卡片包裹提示词管理区域。
     
-    Requirements: 8.3, 8.4
+    Requirements: 6.2, 8.3, 8.4
     """
     api_manager = st.session_state.api_manager
     
@@ -1733,7 +2389,11 @@ def render_prompt_management_content():
     # 设置 API 管理器引用
     PromptManager.set_api_manager(api_manager)
     
-    st.markdown("### 自定义提示词")
+    # 提示词管理卡片
+    # Requirements: 6.2
+    st.markdown('<div class="ui-card">', unsafe_allow_html=True)
+    st.markdown('<div class="ui-card-header">提示词管理</div>', unsafe_allow_html=True)
+    
     st.caption("修改提示词可以调整脚本生成的风格和输出格式")
     
     # 提示词类型选择
@@ -1776,11 +2436,25 @@ def render_prompt_management_content():
         label_visibility="collapsed"
     )
     
-    # 操作按钮
-    col1, col2, col3 = st.columns(3)
+    # 操作按钮 - 右对齐
+    col1, col2, col3, col4 = st.columns([2, 1, 1, 1])
     
-    with col1:
-        if st.button("保存", use_container_width=True, key=f"settings_save_prompt_{selected_type}"):
+    with col2:
+        if st.button("复制默认", use_container_width=True, key=f"settings_copy_default_{selected_type}", type="secondary"):
+            st.session_state[f"settings_prompt_editor_{selected_type}"] = default_prompt
+            st.rerun()
+    
+    with col3:
+        if st.button("重置", use_container_width=True, key=f"settings_reset_prompt_{selected_type}", type="secondary"):
+            success, msg = api_manager.reset_prompt(selected_type)
+            if success:
+                display_success("已重置为默认提示词")
+                st.rerun()
+            else:
+                display_error(f"重置失败: {msg}")
+    
+    with col4:
+        if st.button("保存", use_container_width=True, key=f"settings_save_prompt_{selected_type}", type="primary"):
             if edited_prompt.strip():
                 success, msg = api_manager.save_prompt(selected_type, edited_prompt)
                 if success:
@@ -1791,19 +2465,7 @@ def render_prompt_management_content():
             else:
                 display_error("提示词内容不能为空")
     
-    with col2:
-        if st.button("重置", use_container_width=True, key=f"settings_reset_prompt_{selected_type}"):
-            success, msg = api_manager.reset_prompt(selected_type)
-            if success:
-                display_success("已重置为默认提示词")
-                st.rerun()
-            else:
-                display_error(f"重置失败: {msg}")
-    
-    with col3:
-        if st.button("复制默认", use_container_width=True, key=f"settings_copy_default_{selected_type}"):
-            st.session_state[f"settings_prompt_editor_{selected_type}"] = default_prompt
-            st.rerun()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ==================== 主程序入口 ====================

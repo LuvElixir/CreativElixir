@@ -72,6 +72,21 @@ class Script:
 class RAGSystem:
     """RAG 知识库系统"""
     
+    # 高转化特征硬编码（MVP 阶段）
+    HIGH_PERFORMING_TRAITS = {
+        "SLG": """1. 前3秒必须展示战力数值跳动或地图扩张。
+2. 必须包含'以弱胜强'的策略反转。
+3. 结尾强调'开局送连抽'。""",
+        
+        "MMO": """1. 必须展示高精度捏脸或装备发光特效。
+2. 强调'自由交易'或'回收'利益点。
+3. 拒绝长旁白，多用战斗实录。""",
+        
+        "DEFAULT": """1. 黄金前3秒吸睛。
+2. 卖点清晰。
+3. 强力 CTA 引导转化。"""
+    }
+    
     def __init__(
         self,
         vector_db_path: str = "./data/vector_db",
@@ -473,6 +488,22 @@ class RAGSystem:
     def update_api_manager(self, api_manager):
         """更新 API 管理器实例"""
         self._api_manager = api_manager
+    
+    def get_high_performing_traits(self, category: str) -> str:
+        """
+        获取指定品类的高转化广告特征
+        
+        Args:
+            category: 游戏品类（SLG、MMO、休闲等）
+            
+        Returns:
+            高转化特征描述字符串
+        """
+        # 尝试获取指定品类的特征，如果不存在则返回默认特征
+        return self.HIGH_PERFORMING_TRAITS.get(
+            category, 
+            self.HIGH_PERFORMING_TRAITS["DEFAULT"]
+        )
     
     def is_chromadb_available(self) -> bool:
         """检查 ChromaDB 是否可用（保持向后兼容）"""

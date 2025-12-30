@@ -310,17 +310,40 @@ class ScriptGenerator:
     def __init__(
         self,
         api_manager: APIManager,
-        rag_system: RAGSystem
+        rag_system: RAGSystem,
+        review_api_manager: Optional[APIManager] = None
     ):
         """
         初始化脚本生成器
         
         Args:
-            api_manager: API 管理器实例
+            api_manager: 生成专用 API 管理器
             rag_system: RAG 系统实例
+            review_api_manager: 评审专用 API 管理器（可选，默认使用 api_manager）
         """
         self.api_manager = api_manager
         self.rag_system = rag_system
+        # 双模型架构：生成和评审使用独立的 API 管理器
+        self.gen_api = api_manager
+        self.rev_api = review_api_manager if review_api_manager else api_manager
+    
+    def get_model_info(self) -> dict:
+        """
+        获取当前使用的模型信息
+        
+        Returns:
+            包含生成模型和评审模型信息的字典
+        """
+        gen_config = self.gen_api.load_config()
+        rev_config = self.rev_api.load_config()
+        
+        return {
+            "gen_model": gen_config.model_id if gen_config else "未配置",
+            "gen_name": gen_config.name if gen_config else "未配置",
+            "rev_model": rev_config.model_id if rev_config else "未配置",
+            "rev_name": rev_config.name if rev_config else "未配置",
+            "is_same_model": self.gen_api is self.rev_api
+        }
     
     def generate(
         self,
@@ -509,7 +532,12 @@ class ScriptGenerator:
     
     def _review_script(self, input_data: GenerationInput, script: str) -> str:
         """
-        评审脚本并给出修改意见
+        使用高级评审流程评审脚本
+        
+        步骤:
+        1. 获取 RAG 高转化特征
+        2. 构建高级评审 Prompt
+        3. 使用评审专用 API 发送请求
         
         Args:
             input_data: 生成输入数据
@@ -518,17 +546,39 @@ class ScriptGenerator:
         Returns:
             评审意见
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Step 1: 获取 RAG 高转化特征
+        rag_traits = None
+        try:
+            rag_traits = self.rag_system.get_high_performing_traits(input_data.category)
+            logger.info(f"获取 RAG 高转化特征成功，品类: {input_data.category}")
+            logger.debug(f"RAG 特征内容: {rag_traits}")
+        except Exception as e:
+            # RAG 获取失败时使用默认特征
+            logger.warning(f"RAG 特征获取失败，使用默认特征: {e}")
+            rag_traits = self.rag_system.HIGH_PERFORMING_TRAITS.get("DEFAULT", "")
+        
+        # Step 2: 构建评审 Prompt（传入 rag_traits 参数）
         prompt = PromptManager.get_review_prompt(
             game_intro=input_data.game_intro,
             usp=input_data.usp,
             target_audience=input_data.target_audience,
             category=input_data.category,
-            script=script
+            script=script,
+            rag_traits=rag_traits,
+            use_advanced=True
         )
         
         messages = [{"role": "user", "content": prompt}]
         
-        success, response = self.api_manager.chat(messages)
+        # Step 3: 使用评审专用 API（rev_api）发送请求
+        rev_config = self.rev_api.load_config()
+        if rev_config:
+            logger.info(f"使用评审模型: {rev_config.model_id} ({rev_config.name})")
+        
+        success, response = self.rev_api.chat(messages)
         if success:
             return response
         else:
