@@ -36,6 +36,9 @@ func _enter_tree() -> void:
 	_chat_controller.name = "ChatController"
 	add_child(_chat_controller)
 
+	# Pass UndoRedo manager to controller for agent actions
+	_chat_controller.set_undo_redo(get_undo_redo())
+
 	# Initialize dock UI
 	_dock = CreativElixirChatDock.new()
 	_dock.initialize(_chat_controller, _event_bus, _config_manager)
