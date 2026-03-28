@@ -11,7 +11,7 @@ var _config: CreativElixirConfigManager
 var _context_gatherer: CreativElixirContextGatherer
 var _action_parser: CreativElixirActionParser
 var _action_executor: CreativElixirActionExecutor
-var _chat_history: Array = []  # Array of {"role": String, "content": String}
+var _history: CreativElixirChatHistory
 
 
 func _init(api_manager: CreativElixirApiManager = null,
@@ -21,6 +21,7 @@ func _init(api_manager: CreativElixirApiManager = null,
 	_event_bus = event_bus
 	_config = config
 	_action_parser = CreativElixirActionParser.new()
+	_history = CreativElixirChatHistory.new()
 
 
 func _ready() -> void:
@@ -28,6 +29,9 @@ func _ready() -> void:
 	_context_gatherer = CreativElixirContextGatherer.new()
 	_context_gatherer.name = "ContextGatherer"
 	add_child(_context_gatherer)
+
+	# Load previous session
+	_history.load_latest()
 
 	if _event_bus:
 		_event_bus.response_received.connect(_on_response_received)
@@ -62,12 +66,15 @@ func handle_user_message(text: String, context_mode: int,
 	# Build system prompt with context
 	var system_prompt := CreativElixirMessageBuilder.build_system_prompt(context)
 
-	# Build messages array
-	var recent_history := _get_recent_history(CreativElixirConstants.MAX_CHAT_HISTORY_MESSAGES)
-	var messages := CreativElixirMessageBuilder.build_messages(recent_history, text, images)
+	# Build messages array from persisted history
+	var recent := _history.get_recent(CreativElixirConstants.MAX_CHAT_HISTORY_MESSAGES)
+	var api_history: Array = []
+	for msg in recent:
+		api_history.append({"role": msg.get("role", "user"), "content": msg.get("content", "")})
+	var messages := CreativElixirMessageBuilder.build_messages(api_history, text, images)
 
-	# Record user message in history
-	_chat_history.append({"role": "user", "content": text})
+	# Record user message
+	_history.append("user", text)
 
 	# Send to API
 	_api_manager.send_message(messages, system_prompt)
@@ -84,8 +91,9 @@ func apply_code(code: String, file_path: String) -> void:
 		)
 
 
+## Get the persisted chat history.
 func get_chat_history() -> Array:
-	return _chat_history.duplicate()
+	return _history.get_all()
 
 
 ## Get recent errors from the log reader.
@@ -97,18 +105,13 @@ func get_recent_errors() -> String:
 
 # ── Private ───────────────────────────────────────────────────────
 
-func _get_recent_history(max_count: int) -> Array:
-	if _chat_history.size() <= max_count:
-		return _chat_history.duplicate()
-	return _chat_history.slice(_chat_history.size() - max_count)
-
-
 func _on_response_received(result: Dictionary) -> void:
 	var content: String = result.get("content", "")
 	if content.is_empty():
 		return
 
-	_chat_history.append({"role": "assistant", "content": content})
+	# Persist assistant response
+	_history.append("assistant", content)
 
 	# Parse actions from response
 	var parsed := _action_parser.parse(content)
@@ -120,4 +123,4 @@ func _on_response_received(result: Dictionary) -> void:
 
 
 func _on_chat_cleared() -> void:
-	_chat_history.clear()
+	_history.clear()

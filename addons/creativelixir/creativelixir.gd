@@ -14,6 +14,7 @@ var _chat_controller: CreativElixirChatController
 var _dock: CreativElixirChatDock
 var _window: CreativElixirChatWindow
 var _settings_dialog: CreativElixirSettingsDialog
+var _art_panel: CreativElixirArtPromptPanel
 
 var _is_popped_out := false
 
@@ -44,15 +45,22 @@ func _enter_tree() -> void:
 	_dock.initialize(_chat_controller, _event_bus, _config_manager)
 	add_control_to_dock(DOCK_SLOT_RIGHT_UL, _dock)
 
-	# Initialize settings dialog (hidden by default)
+	# Initialize dialogs (hidden by default)
+	var base := EditorInterface.get_base_control()
+
 	_settings_dialog = CreativElixirSettingsDialog.new()
 	_settings_dialog.initialize(_config_manager, _event_bus)
-	EditorInterface.get_base_control().add_child(_settings_dialog)
+	base.add_child(_settings_dialog)
+
+	_art_panel = CreativElixirArtPromptPanel.new()
+	_art_panel.initialize(_config_manager, _event_bus)
+	base.add_child(_art_panel)
 
 	# Connect UI signals
 	_event_bus.pop_out_requested.connect(_on_pop_out)
 	_event_bus.dock_requested.connect(_on_dock_back)
 	_event_bus.settings_requested.connect(_on_settings_requested)
+	_event_bus.art_panel_requested.connect(_on_art_panel_requested)
 
 	print("CreativElixir v%s loaded." % CreativElixirConstants.PLUGIN_VERSION)
 
@@ -63,10 +71,14 @@ func _exit_tree() -> void:
 		_window.queue_free()
 		_window = null
 
-	# Clean up settings dialog
+	# Clean up dialogs
 	if _settings_dialog and is_instance_valid(_settings_dialog):
 		_settings_dialog.queue_free()
 		_settings_dialog = null
+
+	if _art_panel and is_instance_valid(_art_panel):
+		_art_panel.queue_free()
+		_art_panel = null
 
 	# Clean up dock
 	if _dock and is_instance_valid(_dock):
@@ -77,7 +89,7 @@ func _exit_tree() -> void:
 	print("CreativElixir unloaded.")
 
 
-# ── Pop Out / Dock Back ───────────────────────────────────────────
+# ��─ Pop Out / Dock Back ───────────────────────────────────────────
 
 func _on_pop_out() -> void:
 	if _is_popped_out:
@@ -123,3 +135,10 @@ func _on_dock_back() -> void:
 func _on_settings_requested() -> void:
 	if _settings_dialog and is_instance_valid(_settings_dialog):
 		_settings_dialog.popup_centered()
+
+
+# ── Art Prompt Generator ──────────────────────────────────────────
+
+func _on_art_panel_requested() -> void:
+	if _art_panel and is_instance_valid(_art_panel):
+		_art_panel.popup_centered()
