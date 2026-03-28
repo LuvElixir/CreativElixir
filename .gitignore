@@ -1,0 +1,10 @@
+# Godot
+.godot/
+*.import
+
+# CreativElixir - chat history (optional to commit)
+addons/creativelixir/.chat_history/
+
+# OS
+.DS_Store
+Thumbs.db
