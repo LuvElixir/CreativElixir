@@ -45,6 +45,12 @@ func set_undo_redo(undo_redo: EditorUndoRedoManager) -> void:
 	add_child(_action_executor)
 
 
+## Cancel the current in-flight request.
+func cancel_request() -> void:
+	if _api_manager:
+		_api_manager.cancel_request()
+
+
 ## Handle a user message from the UI.
 func handle_user_message(text: String, context_mode: int,
 		include_screenshot: bool) -> void:

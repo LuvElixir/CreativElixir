@@ -1,0 +1,14 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; but it can also be edited using a text editor.
+
+[application]
+
+config/name="CreativElixir"
+config/description="AI-powered development assistant plugin for Godot 4.x"
+config/version="0.1.0"
+config/features=PackedStringArray("4.6")
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/creativelixir/plugin.cfg")
