@@ -22,30 +22,20 @@ func _ready() -> void:
 
 func _register_project_settings() -> void:
 	_register_setting(
-		CreativElixirConstants.SETTING_PROVIDER,
-		CreativElixirConstants.DEFAULT_PROVIDER,
+		CreativElixirConstants.SETTING_API_FORMAT,
+		CreativElixirConstants.DEFAULT_API_FORMAT,
 		TYPE_STRING,
 		PROPERTY_HINT_ENUM,
 		"openai,anthropic"
 	)
 	_register_setting(
-		CreativElixirConstants.SETTING_OPENAI_BASE_URL,
+		CreativElixirConstants.SETTING_BASE_URL,
 		CreativElixirConstants.DEFAULT_OPENAI_BASE_URL,
 		TYPE_STRING
 	)
 	_register_setting(
-		CreativElixirConstants.SETTING_OPENAI_MODEL,
+		CreativElixirConstants.SETTING_MODEL,
 		CreativElixirConstants.DEFAULT_OPENAI_MODEL,
-		TYPE_STRING
-	)
-	_register_setting(
-		CreativElixirConstants.SETTING_ANTHROPIC_BASE_URL,
-		CreativElixirConstants.DEFAULT_ANTHROPIC_BASE_URL,
-		TYPE_STRING
-	)
-	_register_setting(
-		CreativElixirConstants.SETTING_ANTHROPIC_MODEL,
-		CreativElixirConstants.DEFAULT_ANTHROPIC_MODEL,
 		TYPE_STRING
 	)
 
@@ -66,77 +56,57 @@ func _register_setting(key: String, default_value: Variant, type: int,
 
 # ── Getters ───────────────────────────────────────────────────────
 
-func get_active_provider() -> String:
+func get_api_format() -> String:
 	return ProjectSettings.get_setting(
-		CreativElixirConstants.SETTING_PROVIDER,
-		CreativElixirConstants.DEFAULT_PROVIDER
+		CreativElixirConstants.SETTING_API_FORMAT,
+		CreativElixirConstants.DEFAULT_API_FORMAT
 	)
 
 
-func get_base_url(provider: String = "") -> String:
-	if provider.is_empty():
-		provider = get_active_provider()
-	match provider:
-		"openai":
-			return ProjectSettings.get_setting(
-				CreativElixirConstants.SETTING_OPENAI_BASE_URL,
-				CreativElixirConstants.DEFAULT_OPENAI_BASE_URL
-			)
-		"anthropic":
-			return ProjectSettings.get_setting(
-				CreativElixirConstants.SETTING_ANTHROPIC_BASE_URL,
-				CreativElixirConstants.DEFAULT_ANTHROPIC_BASE_URL
-			)
-	return ""
+## Alias for backward compatibility with chat_controller etc.
+func get_active_provider() -> String:
+	return get_api_format()
 
 
-func get_model_name(provider: String = "") -> String:
-	if provider.is_empty():
-		provider = get_active_provider()
-	match provider:
-		"openai":
-			return ProjectSettings.get_setting(
-				CreativElixirConstants.SETTING_OPENAI_MODEL,
-				CreativElixirConstants.DEFAULT_OPENAI_MODEL
-			)
-		"anthropic":
-			return ProjectSettings.get_setting(
-				CreativElixirConstants.SETTING_ANTHROPIC_MODEL,
-				CreativElixirConstants.DEFAULT_ANTHROPIC_MODEL
-			)
-	return ""
+func get_base_url(_provider: String = "") -> String:
+	return ProjectSettings.get_setting(
+		CreativElixirConstants.SETTING_BASE_URL,
+		CreativElixirConstants.DEFAULT_OPENAI_BASE_URL
+	)
 
 
-func get_api_key(provider: String = "") -> String:
-	if provider.is_empty():
-		provider = get_active_provider()
-	return _keys_config.get_value("keys", provider, "")
+func get_model_name(_provider: String = "") -> String:
+	return ProjectSettings.get_setting(
+		CreativElixirConstants.SETTING_MODEL,
+		CreativElixirConstants.DEFAULT_OPENAI_MODEL
+	)
+
+
+func get_api_key(_provider: String = "") -> String:
+	return _keys_config.get_value("keys", "active", "")
 
 
 # ── Setters ───────────────────────────────────────────────────────
 
+func set_api_format(fmt: String) -> void:
+	ProjectSettings.set_setting(CreativElixirConstants.SETTING_API_FORMAT, fmt)
+
+
+## Alias for backward compatibility.
 func set_provider(provider: String) -> void:
-	ProjectSettings.set_setting(CreativElixirConstants.SETTING_PROVIDER, provider)
+	set_api_format(provider)
 
 
-func set_base_url(provider: String, url: String) -> void:
-	match provider:
-		"openai":
-			ProjectSettings.set_setting(CreativElixirConstants.SETTING_OPENAI_BASE_URL, url)
-		"anthropic":
-			ProjectSettings.set_setting(CreativElixirConstants.SETTING_ANTHROPIC_BASE_URL, url)
+func set_base_url(_provider: String, url: String) -> void:
+	ProjectSettings.set_setting(CreativElixirConstants.SETTING_BASE_URL, url)
 
 
-func set_model_name(provider: String, model: String) -> void:
-	match provider:
-		"openai":
-			ProjectSettings.set_setting(CreativElixirConstants.SETTING_OPENAI_MODEL, model)
-		"anthropic":
-			ProjectSettings.set_setting(CreativElixirConstants.SETTING_ANTHROPIC_MODEL, model)
+func set_model_name(_provider: String, model: String) -> void:
+	ProjectSettings.set_setting(CreativElixirConstants.SETTING_MODEL, model)
 
 
-func set_api_key(provider: String, key: String) -> void:
-	_keys_config.set_value("keys", provider, key)
+func set_api_key(_provider: String, key: String) -> void:
+	_keys_config.set_value("keys", "active", key)
 	_save_keys()
 
 

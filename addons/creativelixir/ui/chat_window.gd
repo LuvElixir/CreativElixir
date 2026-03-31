@@ -2,11 +2,12 @@
 class_name CreativElixirChatWindow
 extends Window
 
-## Floating window that hosts the shared ChatPanel when popped out.
+## 浮动窗口，弹出时承载共享的 ChatPanel。
 
 signal window_close_requested()
 
 var _chat_panel: CreativElixirChatPanel
+var _margin: MarginContainer
 
 
 func _init() -> void:
@@ -17,6 +18,13 @@ func _init() -> void:
 	exclusive = false
 	wrap_controls = true
 
+	_margin = MarginContainer.new()
+	_margin.add_theme_constant_override("margin_left", 8)
+	_margin.add_theme_constant_override("margin_right", 8)
+	_margin.add_theme_constant_override("margin_top", 8)
+	_margin.add_theme_constant_override("margin_bottom", 8)
+	add_child(_margin)
+
 
 func _ready() -> void:
 	close_requested.connect(_on_close_requested)
@@ -26,13 +34,13 @@ func attach_chat_panel(panel: CreativElixirChatPanel) -> void:
 	_chat_panel = panel
 	if _chat_panel.get_parent():
 		_chat_panel.get_parent().remove_child(_chat_panel)
-	add_child(_chat_panel)
+	_margin.add_child(_chat_panel)
 	_chat_panel.set_docked(false)
 
 
 func detach_chat_panel() -> CreativElixirChatPanel:
-	if _chat_panel and _chat_panel.get_parent() == self:
-		remove_child(_chat_panel)
+	if _chat_panel and _chat_panel.get_parent() == _margin:
+		_margin.remove_child(_chat_panel)
 	return _chat_panel
 
 

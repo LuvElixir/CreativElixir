@@ -2,7 +2,7 @@
 class_name CreativElixirMessageBubble
 extends PanelContainer
 
-## A single chat message display with optional code-apply buttons.
+## 单条聊天消息显示，带可选的代码复制/应用按钮。
 
 signal copy_requested(code: String)
 signal apply_requested(code: String, file_path: String)
@@ -24,7 +24,7 @@ func _init() -> void:
 
 func setup(role: String, content: String, timestamp: String = "") -> void:
 	_is_user = (role == "user")
-	_role_label.text = "You" if _is_user else "CreativElixir"
+	_role_label.text = "你" if _is_user else "CreativElixir"
 
 	if timestamp.is_empty():
 		var time := Time.get_datetime_dict_from_system()
@@ -46,6 +46,11 @@ func setup(role: String, content: String, timestamp: String = "") -> void:
 
 func _build_ui() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Internal padding
+	add_theme_constant_override("margin_left", 8)
+	add_theme_constant_override("margin_right", 8)
+	add_theme_constant_override("margin_top", 6)
+	add_theme_constant_override("margin_bottom", 6)
 
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 4)
@@ -86,12 +91,12 @@ func _build_ui() -> void:
 	vbox.add_child(_action_bar)
 
 	_copy_button = Button.new()
-	_copy_button.text = "Copy Code"
+	_copy_button.text = "复制代码"
 	_copy_button.pressed.connect(_on_copy_pressed)
 	_action_bar.add_child(_copy_button)
 
 	_apply_button = Button.new()
-	_apply_button.text = "Apply Code"
+	_apply_button.text = "应用代码"
 	_apply_button.pressed.connect(_on_apply_pressed)
 	_action_bar.add_child(_apply_button)
 

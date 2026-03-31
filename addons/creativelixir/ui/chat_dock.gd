@@ -2,7 +2,7 @@
 class_name CreativElixirChatDock
 extends Control
 
-## Dock panel wrapper that embeds the shared ChatPanel.
+## 停靠面板包装器，嵌入共享的 ChatPanel。
 
 var _chat_panel: CreativElixirChatPanel
 
@@ -11,7 +11,7 @@ func _init() -> void:
 	name = "CreativElixir"
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	custom_minimum_size = Vector2(300, 400)
+	custom_minimum_size = Vector2(320, 400)
 
 
 func initialize(controller, event_bus: CreativElixirEventBus,

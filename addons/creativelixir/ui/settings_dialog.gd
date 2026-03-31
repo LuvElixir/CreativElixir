@@ -2,7 +2,8 @@
 class_name CreativElixirSettingsDialog
 extends AcceptDialog
 
-## Settings dialog for configuring LLM providers, API keys, and models.
+## 设置对话框 — 配置 API 格式、接口地址、密钥和模型。
+## 支持任何兼容 OpenAI 或 Anthropic API 格式的提供者。
 
 signal settings_saved()
 
@@ -10,27 +11,18 @@ var _config: CreativElixirConfigManager
 var _event_bus: CreativElixirEventBus
 
 # UI elements
-var _tab_container: TabContainer
-var _provider_select: OptionButton
-
-# OpenAI tab
-var _openai_base_url: LineEdit
-var _openai_api_key: LineEdit
-var _openai_model: LineEdit
-var _openai_test_btn: Button
-var _openai_test_label: Label
-
-# Anthropic tab
-var _anthropic_base_url: LineEdit
-var _anthropic_api_key: LineEdit
-var _anthropic_model: LineEdit
-var _anthropic_test_btn: Button
-var _anthropic_test_label: Label
+var _format_select: OptionButton
+var _base_url_edit: LineEdit
+var _api_key_edit: LineEdit
+var _model_edit: LineEdit
+var _test_btn: Button
+var _test_label: Label
 
 
 func _init() -> void:
-	title = "CreativElixir Settings"
-	size = Vector2i(520, 480)
+	title = "CreativElixir 设置"
+	size = Vector2i(520, 400)
+	ok_button_text = "保存"
 	_build_ui()
 
 
@@ -44,233 +36,201 @@ func _build_ui() -> void:
 	var main_vbox := VBoxContainer.new()
 	main_vbox.add_theme_constant_override("separation", 12)
 
-	# Active provider selector
-	var provider_hbox := HBoxContainer.new()
-	provider_hbox.add_theme_constant_override("separation", 8)
-	main_vbox.add_child(provider_hbox)
+	# ── API Format selector ──
+	var format_hbox := HBoxContainer.new()
+	format_hbox.add_theme_constant_override("separation", 8)
+	main_vbox.add_child(format_hbox)
 
-	var provider_label := Label.new()
-	provider_label.text = "Active Provider:"
-	provider_hbox.add_child(provider_label)
+	var format_label := Label.new()
+	format_label.text = "API 格式:"
+	format_label.custom_minimum_size.x = 80
+	format_hbox.add_child(format_label)
 
-	_provider_select = OptionButton.new()
-	_provider_select.add_item("OpenAI Compatible", 0)
-	_provider_select.add_item("Anthropic", 1)
-	_provider_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	provider_hbox.add_child(_provider_select)
+	_format_select = OptionButton.new()
+	_format_select.add_item("OpenAI 兼容", 0)
+	_format_select.add_item("Anthropic 兼容", 1)
+	_format_select.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_format_select.item_selected.connect(_on_format_changed)
+	format_hbox.add_child(_format_select)
 
-	# Tab container for provider configs
-	_tab_container = TabContainer.new()
-	_tab_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	main_vbox.add_child(_tab_container)
+	var hint_label := Label.new()
+	hint_label.text = "支持所有兼容 OpenAI / Anthropic API 格式的服务商（DeepSeek、OpenRouter、Together 等）"
+	hint_label.add_theme_font_size_override("font_size", 11)
+	hint_label.add_theme_color_override("font_color", Color(0.6, 0.6, 0.6))
+	hint_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	main_vbox.add_child(hint_label)
 
-	# OpenAI tab
-	var openai_tab := _build_provider_tab("openai")
-	_tab_container.add_child(openai_tab)
-	_tab_container.set_tab_title(0, "OpenAI Compatible")
+	main_vbox.add_child(HSeparator.new())
 
-	# Anthropic tab
-	var anthropic_tab := _build_provider_tab("anthropic")
-	_tab_container.add_child(anthropic_tab)
-	_tab_container.set_tab_title(1, "Anthropic")
+	# ── Base URL ──
+	var url_hbox := HBoxContainer.new()
+	url_hbox.add_theme_constant_override("separation", 8)
+	main_vbox.add_child(url_hbox)
+
+	var url_label := Label.new()
+	url_label.text = "接口地址:"
+	url_label.custom_minimum_size.x = 80
+	url_hbox.add_child(url_label)
+
+	_base_url_edit = LineEdit.new()
+	_base_url_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_base_url_edit.placeholder_text = CreativElixirConstants.DEFAULT_OPENAI_BASE_URL
+	url_hbox.add_child(_base_url_edit)
+
+	# ── API Key ──
+	var key_hbox := HBoxContainer.new()
+	key_hbox.add_theme_constant_override("separation", 8)
+	main_vbox.add_child(key_hbox)
+
+	var key_label := Label.new()
+	key_label.text = "API 密钥:"
+	key_label.custom_minimum_size.x = 80
+	key_hbox.add_child(key_label)
+
+	_api_key_edit = LineEdit.new()
+	_api_key_edit.secret = true
+	_api_key_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_api_key_edit.placeholder_text = "sk-..."
+	key_hbox.add_child(_api_key_edit)
+
+	# ── Model ──
+	var model_hbox := HBoxContainer.new()
+	model_hbox.add_theme_constant_override("separation", 8)
+	main_vbox.add_child(model_hbox)
+
+	var model_label := Label.new()
+	model_label.text = "模型:"
+	model_label.custom_minimum_size.x = 80
+	model_hbox.add_child(model_label)
+
+	_model_edit = LineEdit.new()
+	_model_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_model_edit.placeholder_text = CreativElixirConstants.DEFAULT_OPENAI_MODEL
+	model_hbox.add_child(_model_edit)
+
+	# ── Test Connection ──
+	main_vbox.add_child(HSeparator.new())
+
+	var test_hbox := HBoxContainer.new()
+	test_hbox.add_theme_constant_override("separation", 8)
+	main_vbox.add_child(test_hbox)
+
+	_test_btn = Button.new()
+	_test_btn.text = "测试连接"
+	_test_btn.custom_minimum_size.x = 100
+	_test_btn.pressed.connect(_on_test_pressed)
+	test_hbox.add_child(_test_btn)
+
+	_test_label = Label.new()
+	_test_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	test_hbox.add_child(_test_label)
 
 	add_child(main_vbox)
-
-	# Connect the OK button
 	confirmed.connect(_on_confirmed)
 
 
-func _build_provider_tab(provider: String) -> VBoxContainer:
-	var vbox := VBoxContainer.new()
-	vbox.name = provider
-	vbox.add_theme_constant_override("separation", 10)
-
-	# Base URL
-	var url_label := Label.new()
-	url_label.text = "Base URL:"
-	vbox.add_child(url_label)
-
-	var url_edit := LineEdit.new()
-	url_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_child(url_edit)
-
-	# API Key
-	var key_label := Label.new()
-	key_label.text = "API Key:"
-	vbox.add_child(key_label)
-
-	var key_edit := LineEdit.new()
-	key_edit.secret = true
-	key_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_child(key_edit)
-
-	# Model
-	var model_label := Label.new()
-	model_label.text = "Model:"
-	vbox.add_child(model_label)
-
-	var model_edit := LineEdit.new()
-	model_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	vbox.add_child(model_edit)
-
-	# Test connection
-	var test_hbox := HBoxContainer.new()
-	test_hbox.add_theme_constant_override("separation", 8)
-	vbox.add_child(test_hbox)
-
-	var test_btn := Button.new()
-	test_btn.text = "Test Connection"
-	test_hbox.add_child(test_btn)
-
-	var test_label := Label.new()
-	test_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	test_hbox.add_child(test_label)
-
-	# Store references
-	match provider:
-		"openai":
-			_openai_base_url = url_edit
-			_openai_api_key = key_edit
-			_openai_model = model_edit
-			_openai_test_btn = test_btn
-			_openai_test_label = test_label
-			url_edit.placeholder_text = CreativElixirConstants.DEFAULT_OPENAI_BASE_URL
-			model_edit.placeholder_text = CreativElixirConstants.DEFAULT_OPENAI_MODEL
-			test_btn.pressed.connect(_on_test_openai)
-		"anthropic":
-			_anthropic_base_url = url_edit
-			_anthropic_api_key = key_edit
-			_anthropic_model = model_edit
-			_anthropic_test_btn = test_btn
-			_anthropic_test_label = test_label
-			url_edit.placeholder_text = CreativElixirConstants.DEFAULT_ANTHROPIC_BASE_URL
-			model_edit.placeholder_text = CreativElixirConstants.DEFAULT_ANTHROPIC_MODEL
-			test_btn.pressed.connect(_on_test_anthropic)
-
-	return vbox
+func _on_format_changed(index: int) -> void:
+	if index == 0:  # OpenAI
+		_base_url_edit.placeholder_text = CreativElixirConstants.DEFAULT_OPENAI_BASE_URL
+		_model_edit.placeholder_text = CreativElixirConstants.DEFAULT_OPENAI_MODEL
+	else:  # Anthropic
+		_base_url_edit.placeholder_text = CreativElixirConstants.DEFAULT_ANTHROPIC_BASE_URL
+		_model_edit.placeholder_text = CreativElixirConstants.DEFAULT_ANTHROPIC_MODEL
 
 
 func _load_values() -> void:
 	if not _config:
 		return
 
-	var active := _config.get_active_provider()
-	_provider_select.selected = 0 if active == "openai" else 1
+	var fmt := _config.get_api_format()
+	_format_select.selected = 0 if fmt == "openai" else 1
+	_on_format_changed(_format_select.selected)
 
-	# OpenAI
-	var openai_url := _config.get_base_url("openai")
-	_openai_base_url.text = openai_url if openai_url != CreativElixirConstants.DEFAULT_OPENAI_BASE_URL else ""
-	_openai_api_key.text = _config.get_api_key("openai")
-	var openai_model := _config.get_model_name("openai")
-	_openai_model.text = openai_model if openai_model != CreativElixirConstants.DEFAULT_OPENAI_MODEL else ""
+	var url := _config.get_base_url()
+	var default_url := CreativElixirConstants.DEFAULT_OPENAI_BASE_URL if fmt == "openai" \
+		else CreativElixirConstants.DEFAULT_ANTHROPIC_BASE_URL
+	_base_url_edit.text = url if url != default_url else ""
 
-	# Anthropic
-	var anthropic_url := _config.get_base_url("anthropic")
-	_anthropic_base_url.text = anthropic_url if anthropic_url != CreativElixirConstants.DEFAULT_ANTHROPIC_BASE_URL else ""
-	_anthropic_api_key.text = _config.get_api_key("anthropic")
-	var anthropic_model := _config.get_model_name("anthropic")
-	_anthropic_model.text = anthropic_model if anthropic_model != CreativElixirConstants.DEFAULT_ANTHROPIC_MODEL else ""
+	_api_key_edit.text = _config.get_api_key()
+
+	var model := _config.get_model_name()
+	var default_model := CreativElixirConstants.DEFAULT_OPENAI_MODEL if fmt == "openai" \
+		else CreativElixirConstants.DEFAULT_ANTHROPIC_MODEL
+	_model_edit.text = model if model != default_model else ""
 
 
 func _on_confirmed() -> void:
 	if not _config:
 		return
 
-	# Save provider
-	var provider := "openai" if _provider_select.selected == 0 else "anthropic"
-	_config.set_provider(provider)
+	var fmt := "openai" if _format_select.selected == 0 else "anthropic"
+	_config.set_api_format(fmt)
 
-	# Save OpenAI settings
-	var openai_url := _openai_base_url.text.strip_edges()
-	if openai_url.is_empty():
-		openai_url = CreativElixirConstants.DEFAULT_OPENAI_BASE_URL
-	_config.set_base_url("openai", openai_url)
+	var url := _base_url_edit.text.strip_edges()
+	if url.is_empty():
+		url = CreativElixirConstants.DEFAULT_OPENAI_BASE_URL if fmt == "openai" \
+			else CreativElixirConstants.DEFAULT_ANTHROPIC_BASE_URL
+	_config.set_base_url(fmt, url)
 
-	if not _openai_api_key.text.strip_edges().is_empty():
-		_config.set_api_key("openai", _openai_api_key.text.strip_edges())
+	if not _api_key_edit.text.strip_edges().is_empty():
+		_config.set_api_key(fmt, _api_key_edit.text.strip_edges())
 
-	var openai_model := _openai_model.text.strip_edges()
-	if openai_model.is_empty():
-		openai_model = CreativElixirConstants.DEFAULT_OPENAI_MODEL
-	_config.set_model_name("openai", openai_model)
-
-	# Save Anthropic settings
-	var anthropic_url := _anthropic_base_url.text.strip_edges()
-	if anthropic_url.is_empty():
-		anthropic_url = CreativElixirConstants.DEFAULT_ANTHROPIC_BASE_URL
-	_config.set_base_url("anthropic", anthropic_url)
-
-	if not _anthropic_api_key.text.strip_edges().is_empty():
-		_config.set_api_key("anthropic", _anthropic_api_key.text.strip_edges())
-
-	var anthropic_model := _anthropic_model.text.strip_edges()
-	if anthropic_model.is_empty():
-		anthropic_model = CreativElixirConstants.DEFAULT_ANTHROPIC_MODEL
-	_config.set_model_name("anthropic", anthropic_model)
+	var model := _model_edit.text.strip_edges()
+	if model.is_empty():
+		model = CreativElixirConstants.DEFAULT_OPENAI_MODEL if fmt == "openai" \
+			else CreativElixirConstants.DEFAULT_ANTHROPIC_MODEL
+	_config.set_model_name(fmt, model)
 
 	settings_saved.emit()
 	if _event_bus:
 		_event_bus.settings_changed.emit()
 
 
-func _on_test_openai() -> void:
-	_test_provider("openai", _openai_base_url, _openai_api_key, _openai_model,
-		_openai_test_btn, _openai_test_label)
-
-
-func _on_test_anthropic() -> void:
-	_test_provider("anthropic", _anthropic_base_url, _anthropic_api_key, _anthropic_model,
-		_anthropic_test_btn, _anthropic_test_label)
-
-
-func _test_provider(provider: String, url_edit: LineEdit, key_edit: LineEdit,
-		model_edit: LineEdit, btn: Button, label: Label) -> void:
+func _on_test_pressed() -> void:
 	if not _config:
 		return
 
-	var url := url_edit.text.strip_edges()
-	if url.is_empty():
-		match provider:
-			"openai": url = CreativElixirConstants.DEFAULT_OPENAI_BASE_URL
-			"anthropic": url = CreativElixirConstants.DEFAULT_ANTHROPIC_BASE_URL
+	var fmt := "openai" if _format_select.selected == 0 else "anthropic"
 
-	var key := key_edit.text.strip_edges()
+	var url := _base_url_edit.text.strip_edges()
+	if url.is_empty():
+		url = CreativElixirConstants.DEFAULT_OPENAI_BASE_URL if fmt == "openai" \
+			else CreativElixirConstants.DEFAULT_ANTHROPIC_BASE_URL
+
+	var key := _api_key_edit.text.strip_edges()
 	if key.is_empty():
-		label.text = "Please enter an API key first."
-		label.add_theme_color_override("font_color", Color.ORANGE)
+		_test_label.text = "请先输入 API 密钥。"
+		_test_label.add_theme_color_override("font_color", Color.ORANGE)
 		return
 
-	var model := model_edit.text.strip_edges()
+	var model := _model_edit.text.strip_edges()
 	if model.is_empty():
-		match provider:
-			"openai": model = CreativElixirConstants.DEFAULT_OPENAI_MODEL
-			"anthropic": model = CreativElixirConstants.DEFAULT_ANTHROPIC_MODEL
+		model = CreativElixirConstants.DEFAULT_OPENAI_MODEL if fmt == "openai" \
+			else CreativElixirConstants.DEFAULT_ANTHROPIC_MODEL
 
-	btn.disabled = true
-	label.text = "Testing..."
-	label.add_theme_color_override("font_color", Color.YELLOW)
+	_test_btn.disabled = true
+	_test_label.text = "测试中..."
+	_test_label.add_theme_color_override("font_color", Color.YELLOW)
 
-	# We need an ApiManager for test — get it from the tree
 	var api_manager := _find_api_manager()
 	if not api_manager:
-		label.text = "Internal error: API manager not found."
-		label.add_theme_color_override("font_color", Color.RED)
-		btn.disabled = false
+		_test_label.text = "内部错误：未找到 API 管理器。"
+		_test_label.add_theme_color_override("font_color", Color.RED)
+		_test_btn.disabled = false
 		return
 
-	api_manager.test_connection(provider, url, key, model,
+	api_manager.test_connection(fmt, url, key, model,
 		func(success: bool, message: String) -> void:
-			btn.disabled = false
-			label.text = message
+			_test_btn.disabled = false
+			_test_label.text = message
 			if success:
-				label.add_theme_color_override("font_color", Color.GREEN)
+				_test_label.add_theme_color_override("font_color", Color.GREEN)
 			else:
-				label.add_theme_color_override("font_color", Color.RED)
+				_test_label.add_theme_color_override("font_color", Color.RED)
 	)
 
 
 func _find_api_manager() -> CreativElixirApiManager:
-	# Walk up the tree to find the API manager
 	var node := get_parent()
 	while node:
 		for child in node.get_children():
