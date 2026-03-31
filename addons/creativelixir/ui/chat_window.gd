@@ -19,6 +19,7 @@ func _init() -> void:
 	wrap_controls = true
 
 	_margin = MarginContainer.new()
+	_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_margin.add_theme_constant_override("margin_left", 8)
 	_margin.add_theme_constant_override("margin_right", 8)
 	_margin.add_theme_constant_override("margin_top", 8)

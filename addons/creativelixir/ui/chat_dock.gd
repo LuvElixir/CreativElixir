@@ -18,6 +18,7 @@ func initialize(controller, event_bus: CreativElixirEventBus,
 		config: CreativElixirConfigManager) -> void:
 	_chat_panel = CreativElixirChatPanel.new()
 	add_child(_chat_panel)
+	_chat_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_chat_panel.initialize(controller, event_bus, config)
 	_chat_panel.set_docked(true)
 
@@ -39,4 +40,5 @@ func attach_chat_panel(panel: CreativElixirChatPanel) -> void:
 	if _chat_panel.get_parent():
 		_chat_panel.get_parent().remove_child(_chat_panel)
 	add_child(_chat_panel)
+	_chat_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_chat_panel.set_docked(true)
