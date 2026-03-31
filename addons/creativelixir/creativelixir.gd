@@ -49,7 +49,7 @@ func _enter_tree() -> void:
 	var base := EditorInterface.get_base_control()
 
 	_settings_dialog = CreativElixirSettingsDialog.new()
-	_settings_dialog.initialize(_config_manager, _event_bus)
+	_settings_dialog.initialize(_config_manager, _event_bus, _api_manager)
 	base.add_child(_settings_dialog)
 
 	_art_panel = CreativElixirArtPromptPanel.new()

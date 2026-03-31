@@ -9,6 +9,7 @@ signal settings_saved()
 
 var _config: CreativElixirConfigManager
 var _event_bus: CreativElixirEventBus
+var _api_manager: CreativElixirApiManager
 
 # UI elements
 var _format_select: OptionButton
@@ -26,9 +27,11 @@ func _init() -> void:
 	_build_ui()
 
 
-func initialize(config: CreativElixirConfigManager, event_bus: CreativElixirEventBus) -> void:
+func initialize(config: CreativElixirConfigManager, event_bus: CreativElixirEventBus,
+		api_manager: CreativElixirApiManager = null) -> void:
 	_config = config
 	_event_bus = event_bus
+	_api_manager = api_manager
 	_load_values()
 
 
@@ -212,14 +215,13 @@ func _on_test_pressed() -> void:
 	_test_label.text = "测试中..."
 	_test_label.add_theme_color_override("font_color", Color.YELLOW)
 
-	var api_manager := _find_api_manager()
-	if not api_manager:
+	if not _api_manager:
 		_test_label.text = "内部错误：未找到 API 管理器。"
 		_test_label.add_theme_color_override("font_color", Color.RED)
 		_test_btn.disabled = false
 		return
 
-	api_manager.test_connection(fmt, url, key, model,
+	_api_manager.test_connection(fmt, url, key, model,
 		func(success: bool, message: String) -> void:
 			_test_btn.disabled = false
 			_test_label.text = message
@@ -228,13 +230,3 @@ func _on_test_pressed() -> void:
 			else:
 				_test_label.add_theme_color_override("font_color", Color.RED)
 	)
-
-
-func _find_api_manager() -> CreativElixirApiManager:
-	var node := get_parent()
-	while node:
-		for child in node.get_children():
-			if child is CreativElixirApiManager:
-				return child
-		node = node.get_parent()
-	return null
