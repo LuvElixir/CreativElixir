@@ -8,6 +8,9 @@ extends CreativElixirLLMProvider
 
 func get_endpoint_url() -> String:
 	var url := base_url.rstrip("/")
+	# If user already included /v1 in the base URL, don't duplicate it
+	if url.ends_with("/v1"):
+		return url + "/chat/completions"
 	return url + "/v1/chat/completions"
 
 
@@ -45,7 +48,7 @@ func parse_response(response_body: PackedByteArray) -> Dictionary:
 	var parsed = JSON.parse_string(text)
 
 	if not parsed is Dictionary:
-		return {"content": "", "error": "Invalid JSON response", "usage": {}}
+		return {"content": "", "error": "无效的 JSON 响应", "usage": {}}
 
 	# Check for API error
 	if parsed.has("error"):

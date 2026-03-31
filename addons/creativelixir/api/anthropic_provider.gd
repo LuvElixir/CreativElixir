@@ -10,6 +10,9 @@ const ANTHROPIC_VERSION := "2023-06-01"
 
 func get_endpoint_url() -> String:
 	var url := base_url.rstrip("/")
+	# If user already included /v1 in the base URL, don't duplicate it
+	if url.ends_with("/v1"):
+		return url + "/messages"
 	return url + "/v1/messages"
 
 
